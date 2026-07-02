@@ -1,7 +1,3 @@
-# Standalone file: do not edit by hand
-# Source: https://github.com/ACCIDDA/flexstanr/blob/HEAD/R/standalone-backends.R
-# ----------------------------------------------------------------------
-#
 # ---
 # repo: ACCIDDA/flexstanr
 # file: standalone-backends.R
