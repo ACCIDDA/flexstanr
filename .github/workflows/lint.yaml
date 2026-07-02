@@ -1,0 +1,32 @@
+name: lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+          use-public-rspm: true
+
+      - name: Install lintr
+        run: install.packages("lintr")
+        shell: Rscript {0}
+
+      # flexstanr is a non-package repo (a single standalone script), so lint the
+      # file directly rather than lintr::lint_package().
+      - name: Lint standalone-backends.R
+        run: |
+          lints <- lintr::lint("R/standalone-backends.R")
+          print(lints)
+          if (length(lints) > 0) quit(status = 1L)
+        shell: Rscript {0}
