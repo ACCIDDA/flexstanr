@@ -1,4 +1,3 @@
-# nolint start: commented_code_linter.
 # ---
 # repo: ACCIDDA/flexstanr
 # file: standalone-backends.R
@@ -6,7 +5,6 @@
 # license: https://spdx.org/licenses/MIT.html
 # imports: [rstan, utils, tools]
 # ---
-# nolint end
 #
 # A portable Stan-backend layer (rstan, with an optional cmdstanr backend) for R
 # packages that fit a Stan model. Adopt it with
