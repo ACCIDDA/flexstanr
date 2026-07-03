@@ -4,9 +4,6 @@ linters: linters_with_defaults(
     object_name_linter = object_name_linter(
       styles = c("snake_case", "symbols")
     ),
-    # The mandatory use_standalone yaml header (# ---) and the commented
-    # usethis:: adoption examples read as "commented code" to lintr.
-    commented_code_linter = NULL,
     return_linter(
       return_style = "implicit"
     )
