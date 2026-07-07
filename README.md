@@ -1,56 +1,68 @@
 # flexstanr
 
-Canonical home for a **portable Stan-backend layer** shared across the ACCIDDA
-Stan packages (imuGAP, hestia, SeverityEstimate). This is a non-package repo: it
-hosts a single standalone R script that any Stan-based package can vendor in
-verbatim, so the backend logic lives in one place instead of being copy-pasted.
+<!-- badges: start -->
+<!-- badges: end -->
+
+A **portable Stan-backend layer** for R packages that fit a Stan model. It gives
+a host package one interface for fitting through either
+[rstan](https://mc-stan.org/rstan/) or (optionally)
+[cmdstanr](https://mc-stan.org/cmdstanr/), so the same code works whichever
+backend is installed.
+
+flexstanr compiles no Stan of its own: the host package supplies its own compiled
+models, and flexstanr resolves them from the calling package at run time.
 
 ## What it provides
 
-`R/standalone-backends.R` gives a package a two-backend Stan interface selected
-by `stan_options(backend = ...)`:
+- `stan_options()` collects and validates sampler arguments for the chosen
+  backend, forwarding them **verbatim** so calls feel native. Mixing one
+  backend's argument vocabulary into the other errors with a "did you mean" hint.
+- `fit_model()` dispatches the fit to the backend recorded on the options,
+  resolving the compiled model by name from the calling package.
+- The fit-consumption accessors read a fit backend-agnostically:
+  `backend_draws_array()`, `backend_extract()`, `backend_generate_quantities()`,
+  and `backend_has_draws()`.
 
-- **rstan** (default, a hard dependency) via `rstan::sampling()`.
-- **cmdstanr** (optional) via `cmdstan_model()$sample()`.
+## Installation
 
-It contains `stan_options()`, the per-backend fit dispatch (`fit_model()` ->
-`fit_rstan()` / `fit_cmdstanr()`), the cross-backend argument-vocabulary guards,
-`check_threaded()`, and the fit-consumption accessors (`fit_backend()`,
-`backend_draws_array()`, `backend_extract()`, `backend_generate_quantities()`,
-`backend_has_draws()`). The script is package-agnostic: the model is resolved
-against each package's own `stanmodels`, the package name via
-`utils::packageName()`, and dropped parameters via a `drop_pars` argument.
-
-## Adopting it
-
-From a host package:
+flexstanr is not yet on CRAN. Install the development version from GitHub:
 
 ```r
-usethis::use_standalone("ACCIDDA/flexstanr", "backends")
+# install.packages("remotes")
+remotes::install_github("ACCIDDA/flexstanr")
 ```
 
-This vendors `R/standalone-backends.R` into the host as
-`R/import-standalone-backends.R`. Then declare the dependencies (see the notes
-at the top of the standalone file):
+The default backend, rstan, is a hard dependency. cmdstanr is an optional
+backend; it is not on CRAN, so a project that wants it installs it separately
+(see the cmdstanr [getting-started guide](https://mc-stan.org/cmdstanr/)).
+
+## Using it in your package
+
+Declare flexstanr as a dependency and call it from your own fitting code:
 
 ```r
-usethis::use_package("rstan")                # default backend (hard dependency)
-usethis::use_package("utils")                # utils::packageName()
-usethis::use_package("tools")                # tools::R_user_dir()
-usethis::use_package("cmdstanr", "Suggests") # optional backend
+# in your package
+opts <- flexstanr::stan_options(chains = 4, iter = 2000, seed = 1)
+fit  <- flexstanr::fit_model(
+  "coverage",              # resolved from your package's stanmodels / inst/stan
+  dat_stan  = data_list,
+  init      = init_list,
+  stan_opts = opts
+)
+draws <- flexstanr::backend_draws_array(fit)
 ```
 
-cmdstanr is not on CRAN. A host that Suggests it also needs, in DESCRIPTION,
-`Additional_repositories: https://stan-dev.r-universe.dev` and (for pak-based CI,
-which does not read that field) `Remotes: stan-dev/cmdstanr`.
+The model name is resolved against your package's own compiled models
+(`stanmodels` for rstan, `inst/stan/<name>.stan` for cmdstanr); the calling
+package is detected automatically. A `useFlexStanR()` setup helper to wire the
+dependencies into a host package is planned.
 
-## Re-syncing
+> **Note.** flexstanr began as a `use_standalone()` script vendored into the
+> ACCIDDA Stan packages (imuGAP, hestia, SeverityEstimate). It is now a proper
+> package those consumers import rather than copy. See the
+> [flexstanr 0.1.0 CRAN release](https://github.com/ACCIDDA/flexstanr/milestone/1)
+> milestone.
 
-`use_standalone()` re-fetches the current version, so hosts stay in sync by
-re-running it (this can be wired into CI). The standalone file is the source of
-truth: edit it here, not in the vendored copies.
+## License
 
-## History
-
-Extracted from ACCIDDA/imuGAP (see imuGAP#112) so imuGAP, hestia, and
-SeverityEstimate share one backend implementation.
+MIT (c) ACCIDDA.

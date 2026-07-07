@@ -1,46 +1,14 @@
-# ---
-# repo: ACCIDDA/flexstanr
-# file: standalone-backends.R
-# last-updated: 2026-07-02
-# license: https://spdx.org/licenses/MIT.html
-# imports: [rstan, utils, tools]
-# ---
-#
 # A portable Stan-backend layer (rstan, with an optional cmdstanr backend) for R
-# packages that fit a Stan model. Adopt it with
-# usethis::use_standalone("ACCIDDA/flexstanr", "backends"). The adoption notes
-# below list the DESCRIPTION dependencies a host must declare.
+# packages that fit a Stan model. Option construction, the cross-backend
+# vocabulary guard, the per-backend fit functions, and the backend-agnostic
+# fit-consumption accessors. Each fit function forwards the user's
+# stan_options() verbatim to that backend's native sampler, so calls feel like
+# using rstan / cmdstanr directly.
 #
-# Backend handling for the Stan fit: option construction, the cross-backend
-# vocabulary guard, and the per-backend fit functions. Each fit function
-# forwards the user's stan_options() verbatim to that backend's native sampler,
-# so calls feel like using rstan / cmdstanr directly.
-#
-# This file is intended to be portable -- a single self-contained
-# implementation that any Stan-based R package can adopt verbatim. Keep it free
-# of package-specific names and assumptions (comments included): the model is
-# selected by `model_name` (resolved against each package's own `stanmodels`),
-# the package name is derived with `utils::packageName()`, and parameters to
-# drop from the saved draws are injected by the caller via `drop_pars`. Anything
-# package-specific belongs elsewhere.
-#
-# To adopt this file, run usethis::use_standalone("ACCIDDA/flexstanr",
-# "backends") once (then it drops in verbatim). That adds rstan, utils, and
-# tools (the `imports:` field above) to the host's DESCRIPTION automatically.
-# cmdstanr is an optional backend that use_standalone cannot add (it is a
-# non-CRAN Suggests), so a host that wants it must also declare it:
-# nolint start: commented_code_linter.
-#   usethis::use_package("cmdstanr", "Suggests")
-# nolint end
-# cmdstanr is not on CRAN, so a host that Suggests it also needs, in DESCRIPTION:
-#   Additional_repositories: https://stan-dev.r-universe.dev
-# pak-based CI (e.g. r-lib/actions setup-r-dependencies) does not read that
-# field (r-lib/pak#424); for it the host also needs, in DESCRIPTION:
-# nolint start: commented_code_linter.
-#   Remotes: stan-dev/cmdstanr
-# nolint end
-# Do not point pak at the r-universe as a repository instead: it serves dev
-# builds of the whole Stan stack, which pak will prefer over CRAN's.
+# flexstanr compiles no Stan of its own: the model is selected by `model_name`
+# and resolved against the *calling* package's own `stanmodels` (rstan) or
+# `inst/stan/` sources (cmdstanr). The calling package is detected automatically
+# (see caller_package()) or passed explicitly via `package`.
 
 # cmdstanr-only argument names, shown when the active backend is rstan (i.e. the
 # user reached for a cmdstanr word), each mapped to the rstan way to do it.
@@ -140,7 +108,7 @@ backend_int_args <- function(backend) {
 #'
 #' Errors on invalid input (non-numeric, empty, `NA`, non-integer, or
 #' non-positive values); otherwise returns the value coerced to integer. Used to
-#' validate count-like arguments. Kept here so this file stays self-contained.
+#' validate count-like arguments.
 #'
 #' @param val the value to validate.
 #' @param name the argument name, used in error messages.
@@ -171,10 +139,10 @@ assert_positive_int <- function(val, name) {
 #' Collects and validates sampler arguments for the chosen `backend`, forwarding
 #' them **verbatim** so calls feel native to that backend. Use the backend's own
 #' argument names; mixing one backend's vocabulary into the other errors with a
-#' hint. The model object is supplied separately via the package's model
-#' options, while `data` and `init` are constructed internally, so none of these
-#' may be set here. `chains` defaults to `4` so downstream code can always size
-#' per-chain structures from it.
+#' hint. The model object is supplied separately (via [fit_model()]), while
+#' `data` and `init` are constructed internally, so none of these may be set
+#' here. `chains` defaults to `4` so downstream code can always size per-chain
+#' structures from it.
 #'
 #' @inheritParams rstan::sampling
 #' @param ... sampler arguments forwarded verbatim to the chosen backend's
@@ -184,7 +152,7 @@ assert_positive_int <- function(val, name) {
 #'   `parallel_chains`, ...).
 #' @param backend which Stan interface to target, one of `"rstan"` (default) or
 #'   `"cmdstanr"`. Determines which argument vocabulary is accepted and which
-#'   sampler [sampling()] calls. Selecting `"cmdstanr"` errors if the cmdstanr
+#'   sampler [fit_model()] calls. Selecting `"cmdstanr"` errors if the cmdstanr
 #'   package is not installed.
 #'
 #' @examples
@@ -203,7 +171,7 @@ stan_options <- function(..., chains = 4L, backend = "rstan") {
   if ("object" %in% names(res)) {
     stop(
       "Passing 'object' in stan_options is not allowed; ",
-      "the model object should be supplied via the model options instead."
+      "the model object should be supplied via fit_model() instead."
     )
   }
   if ("data" %in% names(res)) {
@@ -247,7 +215,7 @@ stan_options <- function(..., chains = 4L, backend = "rstan") {
     }
     res[["seed"]] <- val
   }
-  # Record the backend as an inspectable element; sampling() reads it back and
+  # Record the backend as an inspectable element; fit_model() reads it back and
   # the fit functions strip it before forwarding to the native sampler.
   res$backend <- backend
   res
@@ -278,26 +246,101 @@ check_threaded <- function(stan_opts) {
   )
 }
 
-#' Dispatch a fit to the chosen backend
+#' Name of the package that called into flexstanr
 #'
-#' The backend is read from `stan_opts$backend` (guaranteed present by the caller,
-#' which requires a [stan_options()] result), so it is not passed separately.
+#' flexstanr resolves a host's compiled model from the host's own namespace, so
+#' it must know which package called it. This walks out to the top-level
+#' environment of the calling frame and returns its package name. Returns `NULL`
+#' when called from the global environment or another context without a package
+#' (e.g. interactively), so callers can fail with an actionable message.
+#'
+#' @param env the environment to resolve from; defaults to the caller's frame.
+#' @returns the calling package's name, or `NULL` if there is none.
+#' @keywords internal
+caller_package <- function(env = parent.frame()) {
+  nm <- environmentName(topenv(env))
+  if (is.null(nm) || nm %in% c("", "R_GlobalEnv", "R_EmptyEnv", "base")) {
+    return(NULL)
+  }
+  nm
+}
+
+#' Resolve a host package's compiled rstan model
+#'
+#' Looks up `model_name` in the calling package's `stanmodels` object (the
+#' `rstantools`-generated registry of compiled models). This replaces the
+#' ambient `stanmodels[[model_name]]` lookup that worked only when this code was
+#' vendored into the host: as an imported package, flexstanr must reach into the
+#' host's namespace explicitly.
+#'
+#' @param package the host package name.
+#' @param model_name the model to resolve.
+#' @returns the compiled `stanmodel` object.
+#' @keywords internal
+get_stanmodel <- function(package, model_name) {
+  ns <- tryCatch(asNamespace(package), error = function(e) NULL)
+  if (is.null(ns) || !exists("stanmodels", envir = ns, inherits = FALSE)) {
+    stop(
+      "cannot resolve Stan models: package '", package, "' has no 'stanmodels' ",
+      "object. flexstanr resolves the compiled model from the calling package; ",
+      "pass `package` explicitly if it was not detected correctly.",
+      call. = FALSE
+    )
+  }
+  models <- get("stanmodels", envir = ns, inherits = FALSE)
+  model <- models[[model_name]]
+  if (is.null(model)) {
+    stop(
+      "model '", model_name, "' was not found in ", package, "::stanmodels.",
+      call. = FALSE
+    )
+  }
+  model
+}
+
+#' Fit a Stan model through the chosen backend
+#'
+#' Dispatches a fit to the backend recorded on `stan_opts` (from
+#' [stan_options()]). The compiled model is resolved by `model_name` from the
+#' calling package: for `"rstan"`, `package::stanmodels[[model_name]]`; for
+#' `"cmdstanr"`, `inst/stan/<model_name>.stan` under `package`. The calling
+#' package is detected automatically and can be overridden with `package`.
 #'
 #' @param model_name name of the Stan model; used to look up the compiled model
-#'   in this package's `stanmodels` (rstan) and to locate the `.stan` source
-#'   file under `inst/stan/` (cmdstanr).
+#'   in the calling package's `stanmodels` (rstan) and to locate the `.stan`
+#'   source file under its `inst/stan/` (cmdstanr).
 #' @param dat_stan the Stan data list.
 #' @param init the init list, sized to the chain count.
-#' @param stan_opts the validated `stan_options()` list (carrying a `backend`
+#' @param stan_opts the validated [stan_options()] list (carrying a `backend`
 #'   element).
 #' @param drop_pars character vector of parameter names to exclude from the
 #'   saved draws, or `NULL` to keep everything. Honored by rstan; cmdstanr
 #'   cannot drop parameters and warns if any are requested.
+#' @param package name of the host package whose model is being fit. Defaults to
+#'   the package that called `fit_model()`, which is correct for the usual case
+#'   of a host package fitting one of its own models.
 #' @returns the backend's fit object (a `stanfit` or `CmdStanMCMC`).
-#' @keywords internal
-fit_model <- function(model_name, dat_stan, init, stan_opts, drop_pars = NULL) {
+#'
+#' @examples
+#' \dontrun{
+#' # From inside a host package that ships a compiled `coverage` model:
+#' opts <- stan_options(chains = 2, iter = 500, seed = 1)
+#' fit <- fit_model("coverage", dat_stan = data_list, init = init_list,
+#'                  stan_opts = opts)
+#' }
+#'
+#' @export
+fit_model <- function(model_name, dat_stan, init, stan_opts, drop_pars = NULL,
+                      package = caller_package()) {
   # backend rides on stan_opts; assert_* also subsumes match.arg + installed check.
   backend <- assert_backend_available(stan_opts$backend)
+  if (is.null(package) || !nzchar(package)) {
+    stop(
+      "could not determine the host package for model '", model_name,
+      "'; pass `package` explicitly.",
+      call. = FALSE
+    )
+  }
   # Build the sampler argument list once: drop the backend marker (the native
   # samplers don't accept it) and inject the internally-built data and init, so
   # each fit_BACKEND() receives a ready-to-forward `args` list.
@@ -307,14 +350,14 @@ fit_model <- function(model_name, dat_stan, init, stan_opts, drop_pars = NULL) {
   args$init <- init
   switch(
     backend,
-    rstan    = fit_rstan(model_name, args, drop_pars),
-    cmdstanr = fit_cmdstanr(model_name, args, drop_pars)
+    rstan    = fit_rstan(model_name, args, drop_pars, package),
+    cmdstanr = fit_cmdstanr(model_name, args, drop_pars, package)
   )
 }
 
 #' @keywords internal
-fit_rstan <- function(model_name, args, drop_pars = NULL) {
-  args$object <- stanmodels[[model_name]]
+fit_rstan <- function(model_name, args, drop_pars = NULL, package) {
+  args$object <- get_stanmodel(package, model_name)
   if (length(drop_pars) > 0) {
     # Exclude the named parameters from the saved output.
     args$pars    <- drop_pars
@@ -324,7 +367,7 @@ fit_rstan <- function(model_name, args, drop_pars = NULL) {
 }
 
 #' @keywords internal
-fit_cmdstanr <- function(model_name, args, drop_pars = NULL) {
+fit_cmdstanr <- function(model_name, args, drop_pars = NULL, package) {
   # nocov start: needs the CmdStan toolchain, unavailable on CI/CRAN.
   # cmdstanr availability is already guaranteed by assert_backend_available().
   # The cmdstanr package is only a wrapper; compiling and running also need the
@@ -345,17 +388,16 @@ fit_cmdstanr <- function(model_name, args, drop_pars = NULL) {
       call. = FALSE
     )
   }
-  pkg <- utils::packageName()
   stan_file <- system.file(
     "stan", paste0(model_name, ".stan"),
-    package = pkg, mustWork = TRUE
+    package = package, mustWork = TRUE
   )
   # Compile into a writable user cache, not next to the installed .stan file
   # (the package directory may be read-only, and stray executables there trip
   # R CMD check's "executable files" warning). cmdstan_model() reuses the cached
   # executable across sessions and recompiles only when the .stan source is
   # newer than it -- e.g. after a package update reinstalls the .stan file.
-  exe_dir <- tools::R_user_dir(pkg, "cache")
+  exe_dir <- tools::R_user_dir(package, "cache")
   dir.create(exe_dir, showWarnings = FALSE, recursive = TRUE)
   mod <- cmdstanr::cmdstan_model(stan_file, dir = exe_dir)
   do.call(mod$sample, args)
@@ -394,9 +436,17 @@ fit_backend <- function(raw_fit) {
 
 #' Posterior draws of a fit as an iterations x chains x parameters array
 #'
-#' @param raw_fit a backend-native fit object.
+#' @param raw_fit a backend-native fit object (an rstan `stanfit` or a cmdstanr
+#'   `CmdStanMCMC`).
 #' @returns a 3-D array, dimensions iterations x chains x parameters.
-#' @keywords internal
+#'
+#' @examples
+#' \dontrun{
+#' draws <- backend_draws_array(fit)
+#' dim(draws) # iterations x chains x parameters
+#' }
+#'
+#' @export
 backend_draws_array <- function(raw_fit) {
   switch(
     fit_backend(raw_fit),
@@ -414,12 +464,19 @@ backend_draws_array <- function(raw_fit) {
 #'
 #' Matches the shape returned by [rstan::extract()].
 #'
-#' @param raw_fit a backend-native fit object.
+#' @param raw_fit a backend-native fit object (an rstan `stanfit` or a cmdstanr
+#'   `CmdStanMCMC`).
 #' @param pars character vector of parameter names to extract.
 #' @param ... forwarded to the backend's extractor.
 #' @returns a named list of draw arrays, one per parameter.
 #' @importFrom rstan extract
-#' @keywords internal
+#'
+#' @examples
+#' \dontrun{
+#' post <- backend_extract(fit, pars = c("beta", "sigma"))
+#' }
+#'
+#' @export
 backend_extract <- function(raw_fit, pars, ...) {
   switch(
     fit_backend(raw_fit),
@@ -435,13 +492,21 @@ backend_extract <- function(raw_fit, pars, ...) {
 
 #' Run generated quantities against a fit and return a parameter matrix
 #'
-#' @param raw_fit a backend-native fit object.
+#' @param raw_fit a backend-native fit object (an rstan `stanfit` or a cmdstanr
+#'   `CmdStanMCMC`).
 #' @param data the Stan data list for the generated-quantities run.
 #' @param draws_mat a draws matrix (rows = draws, columns = parameters).
 #' @param pars name of the generated parameter to return.
 #' @returns a matrix of the requested generated parameter (rows = draws).
 #' @importFrom rstan gqs
-#' @keywords internal
+#'
+#' @examples
+#' \dontrun{
+#' gen <- backend_generate_quantities(fit, data = data_list,
+#'                                    draws_mat = as.matrix(fit), pars = "y_rep")
+#' }
+#'
+#' @export
 backend_generate_quantities <- function(raw_fit, data, draws_mat, pars) {
   switch(
     fit_backend(raw_fit),
@@ -470,7 +535,12 @@ backend_generate_quantities <- function(raw_fit, data, draws_mat, pars) {
 #' @param raw_fit a backend-native fit object (an rstan `stanfit` or a cmdstanr
 #'   `CmdStanMCMC`).
 #' @returns logical; `TRUE` if the fit carries usable draws.
-#' @keywords internal
+#'
+#' @examples
+#' # Unrecognized objects are treated as carrying draws (pass-through).
+#' backend_has_draws(list())
+#'
+#' @export
 backend_has_draws <- function(raw_fit) {
   if (methods::is(raw_fit, "stanfit")) {
     length(raw_fit@sim) > 0L && isTRUE(raw_fit@mode == 0L)

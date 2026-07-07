@@ -4,10 +4,9 @@ linters: linters_with_defaults(
     object_name_linter = object_name_linter(
       styles = c("snake_case", "symbols")
     ),
-    # The use_standalone yaml header's `# repo: ACCIDDA/flexstanr` line parses
-    # as R (unlike hyphenated repos), so commented_code_linter false-positives
-    # on it. Disable it rather than a fragile per-line nolint (which
-    # use_standalone strips when vendoring).
+    # Several explanatory comments (e.g. the `# nocov start:` guards and inline
+    # rstan/cmdstanr call notes) parse as R, so commented_code_linter
+    # false-positives on them. Disable it rather than sprinkle nolint lines.
     commented_code_linter = NULL,
     return_linter(
       return_style = "implicit"
