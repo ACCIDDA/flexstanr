@@ -28,7 +28,7 @@ This vignette walks through wiring flexstanr into a host package and using it.
 From the root of your Stan package, run the setup helper once:
 
 ```{r, eval = FALSE}
-flexstanr::useFlexStanR()
+flexstanr::use_flexstanr()
 ```
 
 This adds `flexstanr` (and `rstan`, the default backend) to your `Imports` and,

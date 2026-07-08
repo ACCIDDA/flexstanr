@@ -1,4 +1,4 @@
-# Tests for the useFlexStanR() setup helper. These operate on a throwaway
+# Tests for the use_flexstanr() setup helper. These operate on a throwaway
 # fixture DESCRIPTION so nothing touches a real project.
 
 make_fixture_pkg <- function(dir, remotes = NULL) {
@@ -16,12 +16,12 @@ make_fixture_pkg <- function(dir, remotes = NULL) {
   dir
 }
 
-test_that("useFlexStanR adds flexstanr to Imports and an interim Remotes entry", {
+test_that("use_flexstanr adds flexstanr to Imports and an interim Remotes entry", {
   skip_if_not_installed("desc")
   dir <- withr::local_tempdir()
   make_fixture_pkg(dir)
 
-  expect_identical(useFlexStanR(path = dir), dir)
+  expect_identical(use_flexstanr(path = dir), dir)
 
   d <- desc::desc(file = file.path(dir, "DESCRIPTION"))
   deps <- d$get_deps()
@@ -29,12 +29,12 @@ test_that("useFlexStanR adds flexstanr to Imports and an interim Remotes entry",
   expect_true("ACCIDDA/flexstanr" %in% d$get_remotes())
 })
 
-test_that("useFlexStanR does not clobber an existing rstan version constraint", {
+test_that("use_flexstanr does not clobber an existing rstan version constraint", {
   skip_if_not_installed("desc")
   dir <- withr::local_tempdir()
   make_fixture_pkg(dir)
 
-  useFlexStanR(path = dir)
+  use_flexstanr(path = dir)
 
   d <- desc::desc(file = file.path(dir, "DESCRIPTION"))
   deps <- d$get_deps()
@@ -46,15 +46,15 @@ test_that("on_cran = TRUE skips the interim Remotes entry", {
   dir <- withr::local_tempdir()
   make_fixture_pkg(dir)
 
-  useFlexStanR(path = dir, on_cran = TRUE)
+  use_flexstanr(path = dir, on_cran = TRUE)
 
   d <- desc::desc(file = file.path(dir, "DESCRIPTION"))
   expect_false("ACCIDDA/flexstanr" %in% d$get_remotes())
   expect_true("flexstanr" %in% d$get_deps()$package)
 })
 
-test_that("useFlexStanR errors when there is no DESCRIPTION", {
+test_that("use_flexstanr errors when there is no DESCRIPTION", {
   skip_if_not_installed("desc")
   dir <- withr::local_tempdir()
-  expect_error(useFlexStanR(path = dir), "no DESCRIPTION found")
+  expect_error(use_flexstanr(path = dir), "no DESCRIPTION found")
 })

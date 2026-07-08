@@ -15,7 +15,7 @@ reference:
 - title: Setup
   desc: Wire flexstanr into your own package.
   contents:
-  - useFlexStanR
+  - use_flexstanr
 - title: Fitting
   desc: Build sampler options and fit a model through the chosen backend.
   contents:

@@ -22,16 +22,16 @@
 #' @examples
 #' \dontrun{
 #' # from the root of your Stan package:
-#' flexstanr::useFlexStanR()
+#' flexstanr::use_flexstanr()
 #' }
 #'
 #' @export
-useFlexStanR <- function(path = ".", # nolint: object_name_linter.
-                         remote = "ACCIDDA/flexstanr",
-                         on_cran = FALSE) {
+use_flexstanr <- function(path = ".",
+                          remote = "ACCIDDA/flexstanr",
+                          on_cran = FALSE) {
   if (!requireNamespace("desc", quietly = TRUE)) {
     stop(
-      "useFlexStanR() needs the 'desc' package to edit DESCRIPTION; ",
+      "use_flexstanr() needs the 'desc' package to edit DESCRIPTION; ",
       "install it with install.packages('desc').",
       call. = FALSE
     )
@@ -39,7 +39,7 @@ useFlexStanR <- function(path = ".", # nolint: object_name_linter.
   desc_path <- file.path(path, "DESCRIPTION")
   if (!file.exists(desc_path)) {
     stop(
-      "no DESCRIPTION found at '", path, "'. Run useFlexStanR() from the root ",
+      "no DESCRIPTION found at '", path, "'. Run use_flexstanr() from the root ",
       "of the package you are wiring flexstanr into.",
       call. = FALSE
     )
