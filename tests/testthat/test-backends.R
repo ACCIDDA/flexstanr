@@ -87,17 +87,33 @@ test_that("get_stanmodel errors clearly when the host has no models", {
   expect_error(get_stanmodel("no_such_pkg_xyz", "coverage"), "no 'stanmodels'")
 })
 
-test_that("fit_model fails loudly when the host package cannot be resolved", {
-  opts <- stan_options()
+test_that("fit_model auto-detects the CALLING package, not flexstanr", {
+  # Regression: `package = caller_package()` as a default argument resolved to
+  # flexstanr itself. Put a host function in the `tools` namespace (a base
+  # package with no stanmodels) and call fit_model() with no `package` -- the
+  # resolution must land on 'tools' (surfacing tools' missing-stanmodels error),
+  # never flexstanr.
+  host <- function() {
+    fit_model("coverage", dat_stan = list(), init = list(),
+              stan_opts = stan_options())
+  }
+  environment(host) <- asNamespace("tools")
+  expect_error(host(), "'tools'")
+})
+
+test_that("fit_model errors when the caller has no package (global env)", {
+  host <- function() {
+    fit_model("coverage", dat_stan = list(), init = list(),
+              stan_opts = stan_options())
+  }
+  environment(host) <- globalenv()
+  expect_error(host(), "could not determine the host package")
+})
+
+test_that("fit_model reports a resolvable-but-modelless package (explicit)", {
   expect_error(
-    fit_model("coverage", dat_stan = list(), init = list(), stan_opts = opts,
-              package = NULL),
-    "could not determine the host package"
-  )
-  # A resolvable-but-modelless package reports the missing stanmodels registry.
-  expect_error(
-    fit_model("coverage", dat_stan = list(), init = list(), stan_opts = opts,
-              package = "methods"),
+    fit_model("coverage", dat_stan = list(), init = list(),
+              stan_opts = stan_options(), package = "methods"),
     "no 'stanmodels'"
   )
 })

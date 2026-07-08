@@ -37,6 +37,21 @@ test_that("cmdstanr_extract errors on an unknown parameter", {
   expect_error(cmdstanr_extract(d, "not_a_param"), "not found")
 })
 
+test_that("cmdstanr_extract keeps a length-1 vector as an S x 1 matrix (rstan parity)", {
+  skip_if_not_installed("posterior")
+  # A scalar `mu` and a length-1 vector `x` (flat name "x[1]"). rstan::extract()
+  # returns a bare vector for the scalar but an S x 1 matrix for vector[1], so
+  # cmdstanr_extract() must NOT collapse the vector[1].
+  dm <- posterior::as_draws_matrix(
+    matrix(rnorm(20), nrow = 10, ncol = 2, dimnames = list(NULL, c("mu", "x[1]")))
+  )
+  d <- posterior::as_draws_array(dm)
+  ex <- cmdstanr_extract(d, c("mu", "x"))
+  expect_null(dim(ex$mu))                  # true scalar -> bare vector
+  expect_length(ex$mu, 10)
+  expect_identical(dim(ex$x), c(10L, 1L))  # vector[1] -> S x 1 matrix, like rstan
+})
+
 test_that("cmdstanr_gq_matrix returns a plain draws x parameters matrix", {
   skip_if_not_installed("posterior")
   d <- posterior::subset_draws(posterior::example_draws(), variable = "theta")
