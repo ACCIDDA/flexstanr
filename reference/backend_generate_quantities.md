@@ -11,7 +11,7 @@ backend_generate_quantities(
   draws_mat,
   pars,
   model_name = NULL,
-  package = caller_package()
+  package = NULL
 )
 ```
 

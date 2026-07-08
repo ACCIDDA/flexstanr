@@ -16,7 +16,7 @@ fit_model(
   init,
   stan_opts,
   drop_pars = NULL,
-  package = caller_package()
+  package = NULL
 )
 ```
 
