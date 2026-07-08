@@ -58,7 +58,10 @@ jobs:
         uses: r-lib/actions/check-r-package@v2
         with:
           args: 'c("--no-manual", "--as-cran")'
-          error-on: '"error"'
+          # Fail on WARNINGs too (not just errors) - this is a CRAN-bound
+          # package, and a stray WARNING (e.g. undocumented args) must break CI.
+          # The one expected NOTE (new submission + cmdstanr) still passes.
+          error-on: '"warning"'
 
   check-result:
     if: always()

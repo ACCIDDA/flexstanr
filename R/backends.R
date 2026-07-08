@@ -331,9 +331,15 @@ get_stanmodel <- function(package, model_name) {
 #'
 #' @export
 fit_model <- function(model_name, dat_stan, init, stan_opts, drop_pars = NULL,
-                      package = caller_package()) {
+                      package = NULL) {
   # backend rides on stan_opts; assert_* also subsumes match.arg + installed check.
   backend <- assert_backend_available(stan_opts$backend)
+  # Resolve the host package from the CALLER's frame. This MUST happen in the
+  # body: a `package = caller_package()` default is evaluated in fit_model's own
+  # frame, so it would always resolve to flexstanr rather than the caller.
+  if (is.null(package)) {
+    package <- caller_package(parent.frame())
+  }
   if (is.null(package) || !nzchar(package)) {
     stop(
       "could not determine the host package for model '", model_name,
@@ -468,6 +474,11 @@ cmdstanr_extract <- function(draws, pars) {
   if (!requireNamespace("posterior", quietly = TRUE)) {
     stop("reading a cmdstanr fit needs the 'posterior' package.", call. = FALSE)
   }
+  # A true scalar's flat variable name is the bare `p` (no index); a length-1
+  # vector/array is `p[1]`. Both give draws_of() shape S x 1, but only a true
+  # scalar should collapse to a bare vector -- rstan::extract() keeps a
+  # `vector[1]` as an S x 1 matrix -- so distinguish them by name.
+  flat <- posterior::variables(draws)
   rvars <- posterior::as_draws_rvars(draws)
   out <- lapply(pars, function(p) {
     rv <- rvars[[p]]
@@ -475,9 +486,11 @@ cmdstanr_extract <- function(draws, pars) {
       stop("parameter '", p, "' was not found in the fit.", call. = FALSE)
     }
     a <- posterior::draws_of(rv)
-    # rstan::extract() returns a bare vector for a scalar parameter; drop the
-    # trailing singleton dimension to match.
-    if (length(dim(a)) == 2L && dim(a)[2L] == 1L) as.numeric(a) else a
+    if (p %in% flat && length(dim(a)) == 2L && dim(a)[2L] == 1L) {
+      as.numeric(a)  # true scalar -> bare vector, matching rstan::extract()
+    } else {
+      a
+    }
   })
   names(out) <- pars
   out
@@ -607,7 +620,12 @@ backend_extract <- function(raw_fit, pars, ...) {
 #' @export
 backend_generate_quantities <- function(raw_fit, data, draws_mat, pars,
                                         model_name = NULL,
-                                        package = caller_package()) {
+                                        package = NULL) {
+  # Resolve from the CALLER's frame in the body (see fit_model): a default-arg
+  # caller_package() would resolve to flexstanr, not the caller.
+  if (is.null(package)) {
+    package <- caller_package(parent.frame())
+  }
   switch(
     fit_backend(raw_fit),
     rstan = as.matrix(
