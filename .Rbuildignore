@@ -1,0 +1,9 @@
+^\.github$
+^\.lintr$
+^LICENSE\.md$
+^\.Rproj\.user$
+^.*\.Rproj$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.covignore$

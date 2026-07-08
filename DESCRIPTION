@@ -1,0 +1,37 @@
+Package: flexstanr
+Title: Portable Backend Layer for 'Stan' Models
+Version: 0.1.0
+Authors@R:
+    c(person("Carl", "Pearson", email = "carl.ab.pearson@gmail.com", role = c("aut", "cre"),
+             comment = c(ORCID = "0000-0003-0701-7860")),
+      person("Weston", "Voglesonger", email = "westonvogle@gmail.com", role = "aut"))
+Description: Gives a 'Stan'-based R package one interface for fitting its
+    models through either 'rstan' or (optionally) 'cmdstanr'. Collects and
+    validates sampler options, guarding against mixing one backend's argument
+    vocabulary into the other, dispatches the fit to the chosen backend, and
+    exposes backend-agnostic accessors for reading posterior draws, extracting
+    parameters, and running generated quantities. The host package supplies its
+    own compiled models; flexstanr resolves them from the calling package at run
+    time, so the same code works whichever backend is installed.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Language: en-US
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends:
+    R (>= 4.1.0)
+Imports:
+    methods,
+    rstan (>= 2.18.1),
+    tools
+Suggests:
+    cmdstanr,
+    testthat (>= 3.0.0),
+    withr
+Additional_repositories:
+    https://stan-dev.r-universe.dev
+Remotes:
+    stan-dev/cmdstanr
+Config/testthat/edition: 3
+URL: https://accidda.github.io/flexstanr/, https://github.com/ACCIDDA/flexstanr
+BugReports: https://github.com/ACCIDDA/flexstanr/issues
