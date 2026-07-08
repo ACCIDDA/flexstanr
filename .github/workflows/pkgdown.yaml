@@ -35,8 +35,14 @@ jobs:
       # compile against CRAN's RcppEigen.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::pkgdown, local::.
+          extra-packages: any::pkgdown, any::roxygen2, local::.
           needs: website
+
+      # man/ is untracked (generated); regenerate it so pkgdown has the .Rd
+      # files to build the reference index from.
+      - name: Generate documentation
+        run: roxygen2::roxygenise()
+        shell: Rscript {0}
 
       - name: Build site
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
