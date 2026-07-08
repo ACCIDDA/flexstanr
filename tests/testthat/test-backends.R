@@ -61,14 +61,15 @@ test_that("fit_backend identifies the producing backend", {
   expect_error(fit_backend(list()), "unrecognized fit object")
 })
 
-test_that("unrecognized fits pass through as having draws; cmdstanr stubs error", {
+test_that("unrecognized fits pass through backend_has_draws as having draws", {
   expect_true(backend_has_draws(list()))
+})
+
+test_that("cmdstanr generate_quantities requires a model_name", {
   cmd <- structure(list(), class = "CmdStanMCMC")
-  expect_error(backend_draws_array(cmd), "not yet implemented")
-  expect_error(backend_extract(cmd, "beta_bs"), "not yet implemented")
   expect_error(
     backend_generate_quantities(cmd, list(), matrix(0), "p_obs"),
-    "not yet implemented"
+    "needs `model_name`"
   )
 })
 

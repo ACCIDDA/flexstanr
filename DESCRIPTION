@@ -28,6 +28,7 @@ Suggests:
     cmdstanr,
     desc,
     knitr,
+    posterior,
     rmarkdown,
     spelling,
     testthat (>= 3.0.0),

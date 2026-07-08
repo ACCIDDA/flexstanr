@@ -434,6 +434,103 @@ fit_backend <- function(raw_fit) {
   }
 }
 
+# --- cmdstanr draws reshaping -------------------------------------------------
+# These helpers turn a cmdstanr fit's posterior draws into the same shapes the
+# rstan paths return, so callers stay backend-agnostic. They operate on plain
+# posterior draws objects (not a live fit), so they are unit-tested against
+# synthetic draws without a CmdStan toolchain. The thin `raw_fit$draws()` /
+# generate_quantities() plumbing that feeds them still needs CmdStan and stays
+# untested (# nocov).
+
+#' Coerce a cmdstanr draws array to a plain iterations x chains x parameters array
+#'
+#' @param draws a posterior `draws_array` (iteration x chain x variable).
+#' @returns a base 3-D array, matching `as.array()` on an rstan `stanfit`.
+#' @keywords internal
+cmdstanr_draws_array <- function(draws) {
+  array(draws, dim = dim(draws), dimnames = dimnames(draws))
+}
+
+#' Reshape cmdstanr draws into rstan::extract()'s list-of-arrays
+#'
+#' Groups the flat, indexed variables (`theta[1]`, `theta[2]`, ...) back into one
+#' array per parameter with draws merged across chains, matching the shape
+#' [rstan::extract()] returns: a bare vector for a scalar parameter, an
+#' `S x dims` array otherwise. Unlike rstan's default the draws are not randomly
+#' permuted; they keep iteration-chain order, which is immaterial for the
+#' exchangeable-sample uses these draws are put to.
+#'
+#' @param draws a posterior `draws` object for the requested parameters.
+#' @param pars the parameter base names to extract.
+#' @returns a named list of draw arrays, one per parameter.
+#' @keywords internal
+cmdstanr_extract <- function(draws, pars) {
+  if (!requireNamespace("posterior", quietly = TRUE)) {
+    stop("reading a cmdstanr fit needs the 'posterior' package.", call. = FALSE)
+  }
+  rvars <- posterior::as_draws_rvars(draws)
+  out <- lapply(pars, function(p) {
+    rv <- rvars[[p]]
+    if (is.null(rv)) {
+      stop("parameter '", p, "' was not found in the fit.", call. = FALSE)
+    }
+    a <- posterior::draws_of(rv)
+    # rstan::extract() returns a bare vector for a scalar parameter; drop the
+    # trailing singleton dimension to match.
+    if (length(dim(a)) == 2L && dim(a)[2L] == 1L) as.numeric(a) else a
+  })
+  names(out) <- pars
+  out
+}
+
+#' Coerce cmdstanr generated-quantities draws to a draws x parameters matrix
+#'
+#' @param gq_draws a posterior `draws` object of the requested generated
+#'   parameter(s).
+#' @returns a base matrix (rows = draws), matching the rstan path's
+#'   `as.matrix(gqs(...), pars = ...)`.
+#' @keywords internal
+cmdstanr_gq_matrix <- function(gq_draws) {
+  if (!requireNamespace("posterior", quietly = TRUE)) {
+    stop("reading a cmdstanr fit needs the 'posterior' package.", call. = FALSE)
+  }
+  out <- unclass(posterior::as_draws_matrix(gq_draws))
+  attr(out, "nchains") <- NULL
+  out
+}
+
+#' Run cmdstanr generated quantities for a host model
+#'
+#' Resolves the host's `.stan` model the same way [fit_model()] does, compiles it
+#' into a writable cache, and runs its generated-quantities block against the
+#' fitted draws.
+#'
+#' @param model_name the model to run.
+#' @param package the host package the model belongs to.
+#' @param raw_fit the fitted `CmdStanMCMC` supplying the parameter draws.
+#' @param data the Stan data list for the generated-quantities run.
+#' @returns a `CmdStanGQ` object.
+#' @keywords internal
+run_cmdstanr_gq <- function(model_name, package, raw_fit, data) {
+  # nocov start: needs the cmdstanr backend + CmdStan toolchain.
+  if (is.null(package) || !nzchar(package)) {
+    stop(
+      "could not determine the host package for model '", model_name,
+      "'; pass `package` explicitly.",
+      call. = FALSE
+    )
+  }
+  stan_file <- system.file(
+    "stan", paste0(model_name, ".stan"),
+    package = package, mustWork = TRUE
+  )
+  exe_dir <- tools::R_user_dir(package, "cache")
+  dir.create(exe_dir, showWarnings = FALSE, recursive = TRUE)
+  mod <- cmdstanr::cmdstan_model(stan_file, dir = exe_dir)
+  mod$generate_quantities(fitted_params = raw_fit, data = data)
+  # nocov end
+}
+
 #' Posterior draws of a fit as an iterations x chains x parameters array
 #'
 #' @param raw_fit a backend-native fit object (an rstan `stanfit` or a cmdstanr
@@ -451,11 +548,8 @@ backend_draws_array <- function(raw_fit) {
   switch(
     fit_backend(raw_fit),
     rstan = as.array(raw_fit),
-    # nocov start: needs the cmdstanr backend + CmdStan toolchain.
-    cmdstanr = stop(
-      "reading draws from a cmdstanr fit is not yet implemented.",
-      call. = FALSE
-    )
+    # nocov start: needs a live cmdstanr fit + CmdStan toolchain for $draws().
+    cmdstanr = cmdstanr_draws_array(raw_fit$draws())
     # nocov end
   )
 }
@@ -481,11 +575,8 @@ backend_extract <- function(raw_fit, pars, ...) {
   switch(
     fit_backend(raw_fit),
     rstan = rstan::extract(raw_fit, pars = pars, ...),
-    # nocov start: needs the cmdstanr backend + CmdStan toolchain.
-    cmdstanr = stop(
-      "extracting parameters from a cmdstanr fit is not yet implemented.",
-      call. = FALSE
-    )
+    # nocov start: needs a live cmdstanr fit + CmdStan toolchain for $draws().
+    cmdstanr = cmdstanr_extract(raw_fit$draws(variables = pars), pars)
     # nocov end
   )
 }
@@ -495,8 +586,15 @@ backend_extract <- function(raw_fit, pars, ...) {
 #' @param raw_fit a backend-native fit object (an rstan `stanfit` or a cmdstanr
 #'   `CmdStanMCMC`).
 #' @param data the Stan data list for the generated-quantities run.
-#' @param draws_mat a draws matrix (rows = draws, columns = parameters).
+#' @param draws_mat a draws matrix (rows = draws, columns = parameters). Used by
+#'   the rstan backend; the cmdstanr backend runs generated quantities against
+#'   the fit's own draws and ignores this argument.
 #' @param pars name of the generated parameter to return.
+#' @param model_name name of the model whose generated-quantities block to run.
+#'   Required by the cmdstanr backend, which recompiles the model to run it;
+#'   ignored by rstan, which reuses the model carried on `raw_fit`.
+#' @param package the host package the model belongs to; defaults to the calling
+#'   package (see [fit_model()]). Only used by the cmdstanr backend.
 #' @returns a matrix of the requested generated parameter (rows = draws).
 #' @importFrom rstan gqs
 #'
@@ -507,19 +605,28 @@ backend_extract <- function(raw_fit, pars, ...) {
 #' }
 #'
 #' @export
-backend_generate_quantities <- function(raw_fit, data, draws_mat, pars) {
+backend_generate_quantities <- function(raw_fit, data, draws_mat, pars,
+                                        model_name = NULL,
+                                        package = caller_package()) {
   switch(
     fit_backend(raw_fit),
     rstan = as.matrix(
       rstan::gqs(raw_fit@stanmodel, data = data, draws = draws_mat),
       pars = pars
     ),
-    # nocov start: needs the cmdstanr backend + CmdStan toolchain.
-    cmdstanr = stop(
-      "generated quantities from a cmdstanr fit are not yet implemented.",
-      call. = FALSE
-    )
-    # nocov end
+    cmdstanr = {
+      if (is.null(model_name)) {
+        stop(
+          "the cmdstanr backend needs `model_name` to locate the ",
+          "generated-quantities model.",
+          call. = FALSE
+        )
+      }
+      # nocov start: needs the cmdstanr backend + CmdStan toolchain.
+      gq <- run_cmdstanr_gq(model_name, package, raw_fit, data)
+      cmdstanr_gq_matrix(gq$draws(variables = pars))
+      # nocov end
+    }
   )
 }
 
