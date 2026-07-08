@@ -54,8 +54,8 @@ draws <- flexstanr::backend_draws_array(fit)
 
 The model name is resolved against your package's own compiled models
 (`stanmodels` for rstan, `inst/stan/<name>.stan` for cmdstanr); the calling
-package is detected automatically. A `useFlexStanR()` setup helper to wire the
-dependencies into a host package is planned.
+package is detected automatically. Run `flexstanr::use_flexstanr()` once from
+your package root to wire the dependencies into its DESCRIPTION.
 
 > **Note.** flexstanr began as a `use_standalone()` script vendored into the
 > ACCIDDA Stan packages (imuGAP, hestia, SeverityEstimate). It is now a proper

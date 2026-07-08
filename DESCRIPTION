@@ -26,9 +26,13 @@ Imports:
     tools
 Suggests:
     cmdstanr,
+    desc,
+    knitr,
+    rmarkdown,
     spelling,
     testthat (>= 3.0.0),
     withr
+VignetteBuilder: knitr
 Additional_repositories:
     https://stan-dev.r-universe.dev
 Remotes:
