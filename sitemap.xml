@@ -1,0 +1,24 @@
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>https://accidda.github.io/flexstanr/404.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/LICENSE-text.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/LICENSE.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/authors.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/index.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/assert_backend_available.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/assert_backend_vocab.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/assert_positive_int.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/backend_draws_array.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/backend_extract.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/backend_generate_quantities.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/backend_has_draws.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/backend_int_args.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/caller_package.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/check_threaded.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/fit_backend.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/fit_model.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/flexstanr-package.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/get_stanmodel.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/index.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/stan_options.html</loc></url>
+</urlset>
+
