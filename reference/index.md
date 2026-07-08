@@ -1,5 +1,12 @@
 # Package index
 
+## Setup
+
+Wire flexstanr into your own package.
+
+- [`use_flexstanr()`](https://accidda.github.io/flexstanr/reference/use_flexstanr.md)
+  : Wire flexstanr into a host package
+
 ## Fitting
 
 Build sampler options and fit a model through the chosen backend.
