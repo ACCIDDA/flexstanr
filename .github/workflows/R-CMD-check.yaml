@@ -45,8 +45,14 @@ jobs:
       - name: Install dependencies
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: any::rcmdcheck, any::roxygen2
           needs: check
+
+      # man/ is untracked (generated docs; NAMESPACE stays tracked for
+      # install_github). Regenerate .Rd before the check builds the package.
+      - name: Generate documentation
+        run: roxygen2::roxygenise()
+        shell: Rscript {0}
 
       - name: Check package
         uses: r-lib/actions/check-r-package@v2
