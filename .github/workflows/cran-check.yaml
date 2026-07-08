@@ -1,0 +1,42 @@
+# On-demand submission-readiness check: builds the package as it would be
+# submitted (dev-only Remotes stripped) and runs R CMD check --as-cran on a CI
+# runner. Reports everything (error_on = "never"); does NOT submit to CRAN.
+name: cran-check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cran-check:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+          use-public-rspm: true
+
+      # cmdstanr (non-CRAN Suggests) installs from GitHub via the Remotes field,
+      # which pak reads; Remotes is stripped below before the check builds the
+      # submission-equivalent tarball.
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck, any::roxygen2
+          needs: check
+
+      - name: Generate documentation
+        run: roxygen2::roxygenise()
+        shell: Rscript {0}
+
+      - name: Strip dev-only Remotes (submission-equivalent DESCRIPTION)
+        run: |
+          grep -vE '^Remotes:|^[[:space:]]+stan-dev/cmdstanr' DESCRIPTION > DESCRIPTION.tmp
+          mv DESCRIPTION.tmp DESCRIPTION
+          echo "Remotes present: $(grep -c '^Remotes:' DESCRIPTION)"
+
+      - name: R CMD check --as-cran
+        run: rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = "never")
+        shell: Rscript {0}
