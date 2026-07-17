@@ -28,8 +28,10 @@ Suggests:
     cmdstanr,
     desc,
     knitr,
+    pkgload,
     posterior,
     rmarkdown,
+    roxygen2,
     spelling,
     testthat (>= 3.0.0),
     withr
