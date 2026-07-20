@@ -2,6 +2,8 @@
 
 ## flexstanr 0.1.0
 
+CRAN release: 2026-07-17
+
 Initial release: a portable Stan-backend layer that a Stan-based R
 package can fit its models through, using either rstan (default) or,
 optionally, cmdstanr.
