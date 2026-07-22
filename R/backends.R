@@ -419,13 +419,22 @@ fit_cmdstanr <- function(model_name, args, drop_pars = NULL, package) {
   # R CMD check's "executable files" warning). cmdstan_model() reuses the cached
   # executable across sessions and recompiles only when the .stan source is
   # newer than it -- e.g. after a package update reinstalls the .stan file.
-  exe_dir <- tools::R_user_dir(package, "cache")
-  dir.create(exe_dir, showWarnings = FALSE, recursive = TRUE)
   # Enable within-chain threading in the compiled model when the options carry a
-  # multi-thread allocation (from configure_threading()); cmdstan caches per
-  # (source, cpp_options), so threaded and non-threaded builds coexist.
-  compile_args <- list(stan_file, dir = exe_dir)
+  # multi-thread allocation (from configure_threading()); the flag is inert
+  # otherwise.
   cpp_options <- threading_cpp_options(args$threads_per_chain)
+  # Threaded and non-threaded builds MUST NOT share a cache directory:
+  # cmdstan_model() decides whether to reuse a cached executable from the
+  # source's mtime alone, never the compile options, so a threaded fit would
+  # otherwise reuse a non-threaded binary (which cannot honor threads_per_chain).
+  # Give each compile mode its own subdirectory so a cached executable always
+  # matches the mode requested.
+  exe_dir <- tools::R_user_dir(package, "cache")
+  if (!is.null(cpp_options)) {
+    exe_dir <- file.path(exe_dir, "stan-threads")
+  }
+  dir.create(exe_dir, showWarnings = FALSE, recursive = TRUE)
+  compile_args <- list(stan_file, dir = exe_dir)
   if (!is.null(cpp_options)) {
     compile_args$cpp_options <- cpp_options
   }
