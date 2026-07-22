@@ -372,6 +372,22 @@ fit_rstan <- function(model_name, args, drop_pars = NULL, package) {
   do.call(rstan::sampling, args)
 }
 
+#' cmdstanr compile options for a threading allocation
+#'
+#' Returns the `cpp_options` needed to compile a cmdstanr model with within-chain
+#' threading, or `NULL` when the allocation asks for a single thread (no
+#' threading). Split out of [fit_cmdstanr()] so the compile-time decision is
+#' unit-testable without the CmdStan toolchain.
+#'
+#' @param threads_per_chain the per-chain thread count from the sampler options
+#'   (may be `NULL` when unset).
+#' @returns `list(stan_threads = TRUE)` when more than one thread is requested,
+#'   otherwise `NULL`.
+#' @keywords internal
+threading_cpp_options <- function(threads_per_chain) {
+  if (isTRUE(threads_per_chain > 1L)) list(stan_threads = TRUE) else NULL
+}
+
 #' @keywords internal
 fit_cmdstanr <- function(model_name, args, drop_pars = NULL, package) {
   # nocov start: needs the CmdStan toolchain, unavailable on CI/CRAN.
@@ -405,7 +421,20 @@ fit_cmdstanr <- function(model_name, args, drop_pars = NULL, package) {
   # newer than it -- e.g. after a package update reinstalls the .stan file.
   exe_dir <- tools::R_user_dir(package, "cache")
   dir.create(exe_dir, showWarnings = FALSE, recursive = TRUE)
-  mod <- cmdstanr::cmdstan_model(stan_file, dir = exe_dir)
+  # Enable within-chain threading in the compiled model when the options carry a
+  # multi-thread allocation (from configure_threading()); cmdstan caches per
+  # (source, cpp_options), so threaded and non-threaded builds coexist.
+  compile_args <- list(stan_file, dir = exe_dir)
+  cpp_options <- threading_cpp_options(args$threads_per_chain)
+  if (!is.null(cpp_options)) {
+    compile_args$cpp_options <- cpp_options
+  }
+  # A single thread per chain means no within-chain threading; drop it so
+  # $sample() does not warn about a threads setting on a non-threaded build.
+  if (isTRUE(args$threads_per_chain <= 1L)) {
+    args$threads_per_chain <- NULL
+  }
+  mod <- do.call(cmdstanr::cmdstan_model, compile_args)
   do.call(mod$sample, args)
   # nocov end
 }

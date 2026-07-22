@@ -21,6 +21,13 @@ reference:
   contents:
   - stan_options
   - fit_model
+- title: Threading
+  desc: >
+    Split available cores between chain-parallelism and within-chain threads,
+    scheduler- and cgroup-aware, and apply the split to sampler options.
+  contents:
+  - optimal_alloc
+  - configure_threading
 - title: Reading a fit
   desc: Backend-agnostic accessors for a fitted model object.
   contents:
