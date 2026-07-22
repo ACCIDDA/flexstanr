@@ -1,13 +1,15 @@
 # flexstanr 0.2.0 (development version)
 
-* `optimal_alloc()` and `configure_threading()` bring scheduler-aware thread
-  allocation into flexstanr (ported from hestia): split the cores a process is
-  allowed to use between chain-parallelism and within-chain threads, detecting
-  the allocation with `parallelly::availableCores()` (respecting HPC schedulers
-  and cgroup quotas), then apply it to a `stan_options()` object for either
-  backend. `fit_model()` compiles the cmdstanr backend with threading enabled
-  when the options carry a multi-thread allocation. See the new "Parallel and
-  threaded fitting" vignette.
+* `stan_options(threading = TRUE)` turns on scheduler-aware threading (ported
+  from hestia): flexstanr splits the cores the process is allowed to use --
+  detected with `parallelly::availableCores()`, respecting HPC schedulers and
+  cgroup quotas -- between chain-parallelism and within-chain (`reduce_sum`)
+  threads, using all available cores minus one by default (cap it with
+  `max_cores`), and reports what it chose. `fit_model()` applies the split per
+  backend, compiling the cmdstanr model with threading enabled when needed. The
+  new exported `check_threaded()` lets a host package's fit function warn when
+  its model cannot use the offered threads. See the new "Parallel and threaded
+  fitting" vignette.
 * `use_flexstanr()` now generates the host package's re-export file (with a
   do-not-edit banner) in addition to editing its `DESCRIPTION`, and its
   signature mirrors `usethis::use_package()` (`min_version`, `remote`).

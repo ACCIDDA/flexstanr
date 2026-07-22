@@ -12,122 +12,136 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 library(flexstanr)
 ```
 
-Fitting is the expensive part of most Stan analyses. This article explains how
-flexstanr splits your available cores between running chains in parallel and
-threading within each chain, and how to wire that split into your package's fit
-function so it runs efficiently on a laptop and on a scheduled HPC cluster.
+Fitting is the expensive part of most Stan analyses. flexstanr can put your
+machine's spare cores to work for you from a single switch:
 
-The pieces are two functions -- `optimal_alloc()`, which decides the split, and
-`configure_threading()`, which applies it to a `stan_options()` object for
-whichever backend you use -- plus a one-line caveat about compiling your model
-for threading.
+```{r}
+stan_options(threading = TRUE)
+```
 
-## Two levels of parallelism
+That is the whole user story. This article explains what it does, how to shape
+it (a core cap, HPC allocation), and the one thing a *model author* has to add
+so the switch behaves well on a model that cannot thread.
+
+## What `threading = TRUE` does
 
 A fit can use cores two ways at once:
 
 1. **Across chains.** MCMC chains are independent, so they run in parallel with
    near-linear speedup and no coordination overhead.
 2. **Within a chain (threading).** If your Stan model sums a
-   conditionally-independent term with `reduce_sum()` (or `map_rect()`), each
-   chain can split that sum across threads.
+   conditionally-independent term with `reduce_sum()` (or `map_rect`), each chain
+   can split that sum across threads.
 
-Because chain-parallelism is "free" (no threading overhead) while within-chain
-threading scales sub-linearly, `optimal_alloc()` **fills chain-parallelism first**
-and gives leftover cores to threads:
-
-| chains | cores | chains in parallel | threads per chain |
-|-------:|------:|-------------------:|------------------:|
-| 4      | 4     | 4                  | 1 (no spare)      |
-| 4      | 8     | 4                  | 2                 |
-| 4      | 16    | 4                  | 4                 |
-| 2      | 8     | 2                  | 4                 |
-
-So threading only "switches on" when you have more cores than chains -- otherwise
-every core is spent running chains.
+`stan_options(threading = TRUE)` looks at the cores the process is allowed to
+use, **fills chain-parallelism first** (it is "free" -- no threading overhead),
+gives the leftover cores to threads, writes the result onto the options, and
+**tells you what it chose**:
 
 ```{r}
-optimal_alloc(4, cores = 8)
-#> $parallel_chains
-#> [1] 4
-#> $threads_per_chain
-#> [1] 2
+opts <- stan_options(chains = 4, threading = TRUE)
+#> flexstanr: threading enabled. Using 12 of 16 available cores: 4 chains in
+#> parallel, 3 threads per chain. Reserved 1 core; pass max_cores to change.
 ```
 
-## Wiring it into your fit function
+The split, given a pool of cores to divide (the pool is your machine's cores
+minus the reserved one, or your `max_cores`):
 
-`optimal_alloc()` returns the split; `configure_threading()` writes it onto your
-`stan_options()` using the backend's native controls. The two backends receive
-threads differently, and `configure_threading()` hides that:
+| chains | cores to split | chains in parallel | threads per chain |
+|-------:|---------------:|-------------------:|------------------:|
+| 4      | 4              | 4                  | 1 (no spare)      |
+| 4      | 8              | 4                  | 2                 |
+| 4      | 16             | 4                  | 4                 |
+| 2      | 8              | 2                  | 4                 |
 
-* **rstan** runs chains in parallel via `cores` and reads the per-chain thread
-  count from the `STAN_NUM_THREADS` environment variable at run time (it has no
-  threads-per-chain argument). So `configure_threading()` sets `cores` and, as a
-  side effect, `STAN_NUM_THREADS`.
-* **cmdstanr** takes both natively, so it sets `parallel_chains` and
-  `threads_per_chain` and touches no environment variable.
+So threading only "switches on" when the pool has more cores than chains --
+otherwise every core is spent running chains. Because the default reserves one
+core, an 8-core machine running 4 chains splits a pool of 7 (4 chains, 1 thread
+each); pass `max_cores = 8` to use all eight.
 
-Because the rstan branch mutates the process environment, save and restore
-`STAN_NUM_THREADS` around the fit so a run does not leak its thread count into
-the rest of the session:
+You then fit as usual; `fit_model()` applies the allocation to whichever backend
+you are on (and, for cmdstanr, compiles the model with threading enabled):
 
 ```{r}
-run_my_fit <- function(dat_stan, init, stan_opts = stan_options(chains = 4)) {
-  alloc <- optimal_alloc(stan_opts$chains)
+fit <- fit_model("my_model", dat_stan = dat, init = init, stan_opts = opts)
+```
 
-  # rstan sets STAN_NUM_THREADS as a global side effect; restore it afterwards.
-  old <- Sys.getenv("STAN_NUM_THREADS", unset = NA)
-  on.exit(
-    if (is.na(old)) Sys.unsetenv("STAN_NUM_THREADS")
-    else Sys.setenv(STAN_NUM_THREADS = old),
-    add = TRUE
-  )
+## Capping the cores
 
-  stan_opts <- configure_threading(stan_opts, alloc)
+By default `threading = TRUE` uses **all available cores minus one**, leaving
+some headroom. To leave more (say you are working on the machine while it fits),
+cap it:
+
+```{r}
+# use at most 4 cores, however many the machine has
+stan_options(chains = 4, threading = TRUE, max_cores = 4)
+```
+
+`threading = FALSE` (the default) leaves parallelism untouched, so you can still
+set `cores` (rstan) or `parallel_chains` / `threads_per_chain` (cmdstanr) by hand
+if you want full manual control.
+
+## Model authors: warn when threads can't be used
+
+Threading only helps if the model actually uses `reduce_sum()`/`map_rect` and was
+compiled for threading. flexstanr cannot know that about *your* model -- so if
+you write a fit function on top of flexstanr, check whether the caller asked for
+threads and warn when your model can't use them. `check_threaded()` reports
+what the options request:
+
+```{r}
+run_my_fit <- function(dat_stan, init, stan_opts = stan_options()) {
+  if (check_threaded(stan_opts) && !model_is_threaded) {
+    warning(
+      "threads were requested but this model does not use reduce_sum(); ",
+      "it will run one thread per chain. Run more chains, use the threaded ",
+      "model variant, or set threading = FALSE.",
+      call. = FALSE
+    )
+  }
   fit_model("my_model", dat_stan = dat_stan, init = init, stan_opts = stan_opts)
 }
 ```
 
-`fit_model()` forwards `cores` / `parallel_chains` / `threads_per_chain`
-straight to the backend's sampler, so nothing else is needed at the call site.
-
-### Compile your model for threading
-
-Within-chain threads only do anything if the model was **compiled with threading
-enabled**:
-
-* **cmdstanr** -- `fit_model()` compiles with `cpp_options = list(stan_threads =
-  TRUE)` automatically whenever the options carry `threads_per_chain > 1`, so
-  there is nothing to do.
-* **rstan** -- the host package's models must have been built with threading
-  support (this is a package-build concern; models compiled by `rstantools`
-  with the Stan threading backend read `STAN_NUM_THREADS`). If a model was not
-  built for threading, setting `STAN_NUM_THREADS` simply has no effect.
+This keeps the division of labor clean: the *user* just says `threading = TRUE`,
+and the *model author* -- the only one who knows whether the model can thread --
+tips them off when it won't take effect.
 
 ## How flexstanr decides how many cores to use
 
-When you don't pass `cores`, `optimal_alloc()` asks
-[`parallelly::availableCores()`](https://parallelly.futureverse.org/) for the
-number of cores the **process is allowed** to use -- crucially **not**
+It asks [`parallelly::availableCores()`](https://parallelly.futureverse.org/) for
+the number of cores the **process is allowed** to use -- crucially **not**
 `parallel::detectCores()`. It respects
 
 * the HPC scheduler's allocation (`SLURM_CPUS_PER_TASK`, PBS, SGE, LSF),
 * cgroup CPU quotas (containers, cpuset),
 * `options(mc.cores = ...)`,
 
-and returns 2 under `R CMD check`. This makes the automatic split safe on a
-shared cluster. You can always take control -- an explicit core count is used
-exactly as given.
+and returns 2 under `R CMD check`. This makes `threading = TRUE` safe to use even
+on a shared cluster.
+
+### Compiling your model for threading
+
+Within-chain threads only do anything if the model was **compiled with
+threading**:
+
+* **cmdstanr** -- `fit_model()` compiles with `cpp_options = list(stan_threads =
+  TRUE)` automatically when the allocation asks for more than one thread, into a
+  separate cache directory so a threaded and a non-threaded build coexist.
+  Nothing to do.
+* **rstan** -- the host package's models must have been built with threading
+  support (a package-build concern); flexstanr only sets `STAN_NUM_THREADS`
+  around the fit. If a model was not built for threading, the setting is inert --
+  which is exactly what `check_threaded()` lets you warn about.
 
 ## On a laptop or workstation
 
-Nothing to do: the default detects your cores and splits them. To cap usage, set
-`mc.cores`:
+Nothing to do: `threading = TRUE` detects your cores and splits them, reserving
+one. To leave more free, use `max_cores`, or cap globally with `mc.cores`:
 
 ```{r}
 options(mc.cores = 6)
-# with chains = 4: 4 chains in parallel, 1 thread each (6 %/% 4 = 1);
-# 2 cores are left free.
+stan_options(chains = 4, threading = TRUE)   # sees at most 6 cores
 ```
 
 ## On an HPC cluster
@@ -137,13 +151,12 @@ options(mc.cores = 6)
 `parallel::detectCores()` reports **every** core on the compute node (often 64,
 128+) regardless of your job's allocation. A fit sizing itself from that would
 launch dozens of threads inside a job pinned to a handful of cores; the
-scheduler's cgroup would throttle it to a crawl (or you would trample other
-users on the node). Using `parallelly::availableCores()` reads your *allocation*
-instead, which is why `optimal_alloc()` uses it.
+scheduler's cgroup would throttle it to a crawl. Because `threading = TRUE` uses
+`parallelly::availableCores()`, it reads your *allocation* instead.
 
 ### Single node: let flexstanr split your allocation
 
-Request one task with several CPUs and let the automatic split divide them. For
+Request one task with several CPUs and let `threading = TRUE` divide them. For
 4 chains x 2 threads (8 cores):
 
 ```bash
@@ -158,20 +171,17 @@ Rscript fit.R
 ```
 
 ```{r}
-# fit.R
-fit <- run_my_fit(dat_stan, init, stan_opts = stan_options(chains = 4, iter = 2000))
+# fit.R -- no core arithmetic; availableCores() picks up SLURM_CPUS_PER_TASK = 8
+opts <- stan_options(chains = 4, iter = 2000, threading = TRUE)
+fit  <- fit_model("my_model", dat_stan = dat, init = init, stan_opts = opts)
 saveRDS(fit, "fit.rds")
 ```
-
-No core arithmetic in your script: `availableCores()` picks up
-`SLURM_CPUS_PER_TASK = 8`, and the fit runs 4 chains x 2 threads.
 
 ### Many chains across nodes: one chain per array task
 
 Chain-parallelism and threads are **shared-memory**: they cannot span nodes. To
 scale beyond a single node, run **one chain per job** with a SLURM array, give
-each job all its cores for threading, and combine the single-chain fits
-afterwards.
+each job all its cores for threading, and combine the single-chain fits after.
 
 ```bash
 #SBATCH --array=1-4            # one task per chain
@@ -180,32 +190,12 @@ afterwards.
 ```
 
 ```{r}
-# each array task fits a single chain with a distinct seed
-i <- Sys.getenv("SLURM_ARRAY_TASK_ID")
-fit <- run_my_fit(dat_stan, init, stan_opts = stan_options(chains = 1, seed = as.integer(i)))
+i    <- Sys.getenv("SLURM_ARRAY_TASK_ID")
+opts <- stan_options(chains = 1, seed = as.integer(i), threading = TRUE)
+fit  <- fit_model("my_model", dat_stan = dat, init = init, stan_opts = opts)
 saveRDS(fit, sprintf("chain-%s.rds", i))
 ```
 
-## Choosing the thread count yourself
-
-`optimal_alloc()` auto-splits, but you can override `threads_per_chain` on the
-result before passing it to `configure_threading()`:
-
-```{r}
-alloc <- optimal_alloc(4)     # auto-detect cores
-alloc$threads_per_chain <- 1L # one thread per chain (chains still parallel)
-
-alloc <- optimal_alloc(4)
-alloc$threads_per_chain <- 2L # exactly 2 threads per chain, whatever the machine
-```
-
-`optimal_alloc()` is always called for `parallel_chains` (how many chains run in
-parallel, from the available cores); only `threads_per_chain` is overridden.
-Setting more threads than a machine has free cores per chain will oversubscribe
--- that is your explicit choice, honored rather than clamped.
-
-Parallelism is applied *after* `stan_options()`, not inside it:
-`configure_threading()` writes each backend's parallelism fields (`cores` for
-rstan; `parallel_chains` / `threads_per_chain` for cmdstanr) directly.
-`stan_options()` is for how the sampler explores (`iter`, `warmup`, `seed`,
-`control = list(adapt_delta = ...)`, ...).
+`stan_options()` is otherwise for how the sampler explores (`iter`, `warmup`,
+`seed`, `control = list(adapt_delta = ...)`, ...); `threading` is the one knob
+that reaches out to the machine.

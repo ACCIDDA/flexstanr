@@ -154,18 +154,31 @@ assert_positive_int <- function(val, name) {
 #'   `"cmdstanr"`. Determines which argument vocabulary is accepted and which
 #'   sampler [fit_model()] calls. Selecting `"cmdstanr"` errors if the cmdstanr
 #'   package is not installed.
+#' @param threading `TRUE` to let flexstanr use the machine's spare cores: it
+#'   splits the cores the process is allowed to use across the chains and the
+#'   within-chain (`reduce_sum`) threads, and messages what it chose. `FALSE`
+#'   (the default) leaves parallelism untouched, so you can still set `cores`
+#'   (rstan) or `parallel_chains` / `threads_per_chain` (cmdstanr) by hand. A
+#'   model that cannot use the offered threads should say so; see
+#'   [check_threaded()].
+#' @param max_cores when `threading = TRUE`, an optional cap on the cores used.
+#'   `NULL` (the default) uses all available cores minus one; set it to leave
+#'   more headroom for other work. Ignored when `threading = FALSE`.
 #'
 #' @examples
 #' stan_options()
 #' stan_options(chains = 2, iter = 500)
+#' stan_options(chains = 4, threading = TRUE)  # allocate spare cores to threads
 #' if (requireNamespace("cmdstanr", quietly = TRUE)) {
 #'   stan_options(backend = "cmdstanr", parallel_chains = 4, iter_warmup = 500)
 #' }
 #'
 #' @return a named list of validated sampler arguments, carrying a `backend`
 #'   element recording the backend it was built for
+#' @seealso [check_threaded()]
 #' @export
-stan_options <- function(..., chains = 4L, backend = "rstan") {
+stan_options <- function(..., chains = 4L, backend = "rstan",
+                         threading = FALSE, max_cores = NULL) {
   backend <- assert_backend_available(backend)
   res <- list(...)
   if ("object" %in% names(res)) {
@@ -218,32 +231,51 @@ stan_options <- function(..., chains = 4L, backend = "rstan") {
   # Record the backend as an inspectable element; fit_model() reads it back and
   # the fit functions strip it before forwarding to the native sampler.
   res$backend <- backend
+
+  # Automatic threading: allocate the machine's spare cores across chains and
+  # within-chain threads. Done here (not by the caller) so a host's fit function
+  # only has to pass `threading = TRUE` through to get sensible defaults.
+  if (!is.logical(threading) || length(threading) != 1L || is.na(threading)) {
+    stop("'threading' must be a single TRUE or FALSE.", call. = FALSE)
+  }
+  if (threading) {
+    # threading = TRUE owns the parallelism allocation, so a manually-supplied
+    # core/thread count would be silently overwritten. Reject the contradiction.
+    manual <- intersect(names(res), c("cores", "parallel_chains", "threads_per_chain"))
+    if (length(manual) > 0) {
+      stop(
+        "threading = TRUE allocates cores automatically; drop the manual ",
+        paste(manual, collapse = " / "), " argument(s), or set threading = FALSE.",
+        call. = FALSE
+      )
+    }
+    res <- apply_auto_threading(res, max_cores)
+  }
   res
 }
 
-#' Check whether per-chain threading is enabled for the active backend
+#' Does a set of sampler options ask for within-chain threading?
 #'
-#' cmdstanr configures threading through the `threads_per_chain` sampler
-#' argument; rstan reads the `STAN_NUM_THREADS` environment variable at run
-#' time (`-1` meaning all available cores). Only the run-time configuration is
-#' checked, not whether the model was compiled with threading support. The fit
-#' functions do not consult this themselves: a host package running a threaded
-#' model calls it to warn when the user has not made threads available.
+#' @description A host package's fit function calls this to learn whether the
+#' caller requested within-chain threading -- via `stan_options(threading =
+#' TRUE)`, or by setting `threads_per_chain` directly -- so it can warn when its
+#' model cannot make use of the offered threads (for example a model with no
+#' `reduce_sum` term, or one the host did not compile for threading). It reports
+#' what the *options* ask for, not whether the model can honor it: only the
+#' model's author knows that, which is why the check (and any resulting warning)
+#' belongs in the host's fit function rather than in flexstanr.
 #'
 #' @param stan_opts a [stan_options()] result.
-#' @returns logical; `TRUE` if per-chain threading is enabled, otherwise `FALSE`.
-#' @keywords internal
+#' @returns logical; `TRUE` if the options request more than one thread per
+#'   chain, otherwise `FALSE`.
+#'
+#' @examples
+#' check_threaded(stan_options(chains = 2))                 # FALSE (not requested)
+#' check_threaded(list(threads_per_chain = 4L))             # TRUE
+#'
+#' @export
 check_threaded <- function(stan_opts) {
-  switch(
-    stan_opts$backend,
-    rstan = {
-      threads <- suppressWarnings(
-        as.integer(Sys.getenv("STAN_NUM_THREADS", unset = "1"))
-      )
-      !is.na(threads) && (threads > 1L || threads == -1L)
-    },
-    cmdstanr = isTRUE(stan_opts$threads_per_chain > 1L)
-  )
+  isTRUE(stan_opts$threads_per_chain > 1L)
 }
 
 #' Name of the package that called into flexstanr
@@ -369,7 +401,17 @@ fit_rstan <- function(model_name, args, drop_pars = NULL, package) {
     args$pars    <- drop_pars
     args$include <- FALSE
   }
-  do.call(rstan::sampling, args)
+  # rstan has no threads-per-chain argument: within-chain threading is driven by
+  # the STAN_NUM_THREADS environment variable, read at sampling time. Strip the
+  # carried field (not a sampling argument) and apply the thread count
+  # transiently around the fit (see with_stan_num_threads()).
+  tpc <- args$threads_per_chain
+  args$threads_per_chain <- NULL
+  if (isTRUE(tpc > 1L)) {
+    with_stan_num_threads(tpc, do.call(rstan::sampling, args))
+  } else {
+    do.call(rstan::sampling, args)
+  }
 }
 
 #' cmdstanr compile options for a threading allocation
@@ -420,8 +462,8 @@ fit_cmdstanr <- function(model_name, args, drop_pars = NULL, package) {
   # executable across sessions and recompiles only when the .stan source is
   # newer than it -- e.g. after a package update reinstalls the .stan file.
   # Enable within-chain threading in the compiled model when the options carry a
-  # multi-thread allocation (from configure_threading()); the flag is inert
-  # otherwise.
+  # multi-thread allocation (from stan_options(threading = TRUE)); the flag is
+  # inert otherwise.
   cpp_options <- threading_cpp_options(args$threads_per_chain)
   # Threaded and non-threaded builds MUST NOT share a cache directory:
   # cmdstan_model() decides whether to reuse a cached executable from the

@@ -23,11 +23,11 @@ reference:
   - fit_model
 - title: Threading
   desc: >
-    Split available cores between chain-parallelism and within-chain threads,
-    scheduler- and cgroup-aware, and apply the split to sampler options.
+    Turn on scheduler-aware threading with stan_options(threading = TRUE); a
+    host's fit function checks whether threads were requested so it can warn on a
+    model that cannot use them.
   contents:
-  - optimal_alloc
-  - configure_threading
+  - check_threaded
 - title: Reading a fit
   desc: Backend-agnostic accessors for a fitted model object.
   contents:

@@ -41,17 +41,7 @@ test_that("stan_options defaults and rejects illegal arguments", {
   expect_error(stan_options(init = 1), "init")
 })
 
-# --- check_threaded ----------------------------------------------------------
-
-test_that("check_threaded reads run-time threading config per backend", {
-  skip_if_not_installed("withr")
-  rstan_opts <- stan_options()
-  withr::with_envvar(c(STAN_NUM_THREADS = NA), expect_false(check_threaded(rstan_opts)))
-  withr::with_envvar(c(STAN_NUM_THREADS = "4"), expect_true(check_threaded(rstan_opts)))
-  withr::with_envvar(c(STAN_NUM_THREADS = "-1"), expect_true(check_threaded(rstan_opts)))
-  expect_false(check_threaded(list(backend = "cmdstanr")))
-  expect_true(check_threaded(list(backend = "cmdstanr", threads_per_chain = 4L)))
-})
+# check_threaded is covered in test-threading.R (it reads threads_per_chain).
 
 # --- fit-consumption dispatch ------------------------------------------------
 

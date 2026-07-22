@@ -12,6 +12,7 @@ HPC
 imuGAP
 LSF
 natively
+NUM
 ORCID
 pre
 rebalanced
@@ -23,6 +24,7 @@ scheduler's
 SeverityEstimate
 SGE
 SLURM
+stan
 toolchain
 usethis's
 vendored
