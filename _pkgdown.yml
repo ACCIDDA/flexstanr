@@ -27,7 +27,7 @@ reference:
     host's fit function checks whether threads were requested so it can warn on a
     model that cannot use them.
   contents:
-  - check_threaded
+  - test_threaded
 - title: Reading a fit
   desc: Backend-agnostic accessors for a fitted model object.
   contents:

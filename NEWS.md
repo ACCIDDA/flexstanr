@@ -7,7 +7,7 @@
   threads, using all available cores minus one by default (cap it with
   `max_cores`), and reports what it chose. `fit_model()` applies the split per
   backend, compiling the cmdstanr model with threading enabled when needed. The
-  new exported `check_threaded()` lets a host package's fit function warn when
+  new exported `test_threaded()` lets a host package's fit function warn when
   its model cannot use the offered threads. See the new "Parallel and threaded
   fitting" vignette.
 * `use_flexstanr()` now generates the host package's re-export file (with a

@@ -1,6 +1,6 @@
 # Tests for automatic thread allocation. The user-facing surface is
 # stan_options(threading = TRUE); the allocation helpers (optimal_alloc,
-# write_threading, apply_auto_threading, threading_cpp_options) and check_threaded
+# write_threading, apply_auto_threading, threading_cpp_options) and test_threaded
 # are exercised here. All toolchain-free: no rstan/cmdstanr fit is run, and the
 # cmdstanr paths use plain list(backend = "cmdstanr") stubs.
 
@@ -115,7 +115,7 @@ test_that("stan_options(threading = FALSE) leaves parallelism untouched", {
   opts <- stan_options(chains = 4)
   expect_null(opts$cores)
   expect_null(opts$threads_per_chain)
-  expect_false(check_threaded(opts))
+  expect_false(test_threaded(opts))
 })
 
 test_that("stan_options validates the threading flag and max_cores", {
@@ -145,13 +145,13 @@ test_that("with_stan_num_threads restores a previously-unset var", {
   expect_identical(Sys.getenv("STAN_NUM_THREADS", unset = "UNSET"), "UNSET")
 })
 
-# --- check_threaded ----------------------------------------------------------
+# --- test_threaded ----------------------------------------------------------
 
-test_that("check_threaded reflects the requested threads_per_chain", {
-  expect_true(check_threaded(list(threads_per_chain = 4L)))
-  expect_false(check_threaded(list(threads_per_chain = 1L)))
-  expect_false(check_threaded(list()))
-  expect_false(check_threaded(stan_options(chains = 2)))
+test_that("test_threaded reflects the requested threads_per_chain", {
+  expect_true(test_threaded(list(threads_per_chain = 4L)))
+  expect_false(test_threaded(list(threads_per_chain = 1L)))
+  expect_false(test_threaded(list()))
+  expect_false(test_threaded(stan_options(chains = 2)))
 })
 
 # --- cmdstanr compile-time threading flag (toolchain-free) -------------------

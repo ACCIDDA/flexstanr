@@ -160,7 +160,7 @@ assert_positive_int <- function(val, name) {
 #'   (the default) leaves parallelism untouched, so you can still set `cores`
 #'   (rstan) or `parallel_chains` / `threads_per_chain` (cmdstanr) by hand. A
 #'   model that cannot use the offered threads should say so; see
-#'   [check_threaded()].
+#'   [test_threaded()].
 #' @param max_cores when `threading = TRUE`, an optional cap on the cores used.
 #'   `NULL` (the default) uses all available cores minus one; set it to leave
 #'   more headroom for other work. Ignored when `threading = FALSE`.
@@ -175,7 +175,7 @@ assert_positive_int <- function(val, name) {
 #'
 #' @return a named list of validated sampler arguments, carrying a `backend`
 #'   element recording the backend it was built for
-#' @seealso [check_threaded()]
+#' @seealso [test_threaded()]
 #' @export
 stan_options <- function(..., chains = 4L, backend = "rstan",
                          threading = FALSE, max_cores = NULL) {
@@ -245,7 +245,7 @@ stan_options <- function(..., chains = 4L, backend = "rstan",
     if (length(manual) > 0) {
       stop(
         "threading = TRUE allocates cores automatically; drop the manual ",
-        paste(manual, collapse = " / "), " argument(s), or set threading = FALSE.",
+        paste(manual, collapse = " / "), " argument(s), or leave threading = FALSE.",
         call. = FALSE
       )
     }
@@ -270,11 +270,11 @@ stan_options <- function(..., chains = 4L, backend = "rstan",
 #'   chain, otherwise `FALSE`.
 #'
 #' @examples
-#' check_threaded(stan_options(chains = 2))                 # FALSE (not requested)
-#' check_threaded(list(threads_per_chain = 4L))             # TRUE
+#' test_threaded(stan_options(chains = 2))                 # FALSE (not requested)
+#' test_threaded(list(threads_per_chain = 4L))             # TRUE
 #'
 #' @export
-check_threaded <- function(stan_opts) {
+test_threaded <- function(stan_opts) {
   isTRUE(stan_opts$threads_per_chain > 1L)
 }
 

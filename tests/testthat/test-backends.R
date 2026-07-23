@@ -41,7 +41,7 @@ test_that("stan_options defaults and rejects illegal arguments", {
   expect_error(stan_options(init = 1), "init")
 })
 
-# check_threaded is covered in test-threading.R (it reads threads_per_chain).
+# test_threaded is covered in test-threading.R (it reads threads_per_chain).
 
 # --- fit-consumption dispatch ------------------------------------------------
 

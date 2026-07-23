@@ -86,12 +86,12 @@ if you want full manual control.
 Threading only helps if the model actually uses `reduce_sum()`/`map_rect` and was
 compiled for threading. flexstanr cannot know that about *your* model -- so if
 you write a fit function on top of flexstanr, check whether the caller asked for
-threads and warn when your model can't use them. `check_threaded()` reports
+threads and warn when your model can't use them. `test_threaded()` reports
 what the options request:
 
 ```{r}
 run_my_fit <- function(dat_stan, init, stan_opts = stan_options()) {
-  if (check_threaded(stan_opts) && !model_is_threaded) {
+  if (test_threaded(stan_opts) && !model_is_threaded) {
     warning(
       "threads were requested but this model does not use reduce_sum(); ",
       "it will run one thread per chain. Run more chains, use the threaded ",
@@ -132,7 +132,7 @@ threading**:
 * **rstan** -- the host package's models must have been built with threading
   support (a package-build concern); flexstanr only sets `STAN_NUM_THREADS`
   around the fit. If a model was not built for threading, the setting is inert --
-  which is exactly what `check_threaded()` lets you warn about.
+  which is exactly what `test_threaded()` lets you warn about.
 
 ## On a laptop or workstation
 
