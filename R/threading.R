@@ -75,20 +75,21 @@ write_threading <- function(res, alloc) {
 #' the process is *allowed* to use with [parallelly::availableCores()] (which
 #' respects the HPC scheduler's allocation -- `SLURM_CPUS_PER_TASK`, PBS, SGE,
 #' LSF -- cgroup CPU quotas, `getOption("mc.cores")`, and returns 2 under
-#' `R CMD check`, so it never over-subscribes a scheduled job), reserves one core
-#' by default (or caps the pool at `max_cores`), splits it across the chains with
-#' [optimal_alloc()], writes the result with [write_threading()], and messages
-#' the chosen allocation so the choice is never silent.
+#' `R CMD check`, so it never over-subscribes a scheduled job), uses all
+#' available cores by default (or caps the pool at `max_cores`), splits them
+#' across the chains with [optimal_alloc()], writes the result with
+#' [write_threading()], and messages the chosen allocation so the choice is
+#' never silent.
 #'
 #' @param res a [stan_options()] result (backend and chains already recorded).
 #' @param max_cores optional cap on the cores used; `NULL` uses all available
-#'   minus one.
+#'   cores.
 #' @returns `res`, with threading allocated and recorded.
 #' @keywords internal
 apply_auto_threading <- function(res, max_cores = NULL) {
   available <- detect_cores()
   if (is.null(max_cores)) {
-    pool <- max(1L, available - 1L)   # leave one core for everything else
+    pool <- available   # use all available cores by default
   } else {
     if (length(max_cores) != 1L) {
       stop("'max_cores' must be a single positive integer", call. = FALSE)
@@ -107,8 +108,8 @@ apply_auto_threading <- function(res, max_cores = NULL) {
     if (alloc$parallel_chains == 1L) "" else "s", " in parallel, ",
     alloc$threads_per_chain, " thread",
     if (alloc$threads_per_chain == 1L) "" else "s", " per chain.",
-    if (is.null(max_cores) && pool < available)
-      " Reserved 1 core; pass max_cores to change." else ""
+    if (is.null(max_cores))
+      " Pass max_cores to leave some cores free." else ""
   )
   res
 }

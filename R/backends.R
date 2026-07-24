@@ -162,8 +162,8 @@ assert_positive_int <- function(val, name) {
 #'   model that cannot use the offered threads should say so; see
 #'   [test_threaded()].
 #' @param max_cores when `threading = TRUE`, an optional cap on the cores used.
-#'   `NULL` (the default) uses all available cores minus one; set it to leave
-#'   more headroom for other work. Ignored when `threading = FALSE`.
+#'   `NULL` (the default) uses all available cores; set it to leave some free /
+#'   cap usage for other work. Ignored when `threading = FALSE`.
 #'
 #' @examples
 #' stan_options()

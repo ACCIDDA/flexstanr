@@ -40,12 +40,12 @@ gives the leftover cores to threads, writes the result onto the options, and
 
 ```{r}
 opts <- stan_options(chains = 4, threading = TRUE)
-#> flexstanr: threading enabled. Using 12 of 16 available cores: 4 chains in
-#> parallel, 3 threads per chain. Reserved 1 core; pass max_cores to change.
+#> flexstanr: threading enabled. Using 16 of 16 available cores: 4 chains in
+#> parallel, 4 threads per chain. Pass max_cores to leave some cores free.
 ```
 
-The split, given a pool of cores to divide (the pool is your machine's cores
-minus the reserved one, or your `max_cores`):
+The split, given a pool of cores to divide (the pool is all your machine's
+cores, or your `max_cores`):
 
 | chains | cores to split | chains in parallel | threads per chain |
 |-------:|---------------:|-------------------:|------------------:|
@@ -55,9 +55,9 @@ minus the reserved one, or your `max_cores`):
 | 2      | 8              | 2                  | 4                 |
 
 So threading only "switches on" when the pool has more cores than chains --
-otherwise every core is spent running chains. Because the default reserves one
-core, an 8-core machine running 4 chains splits a pool of 7 (4 chains, 1 thread
-each); pass `max_cores = 8` to use all eight.
+otherwise every core is spent running chains. Because the default uses all your
+cores, an 8-core machine running 4 chains splits a pool of 8 (4 chains, 2
+threads each).
 
 You then fit as usual; `fit_model()` applies the allocation to whichever backend
 you are on (and, for cmdstanr, compiles the model with threading enabled):
@@ -68,9 +68,9 @@ fit <- fit_model("my_model", dat_stan = dat, init = init, stan_opts = opts)
 
 ## Capping the cores
 
-By default `threading = TRUE` uses **all available cores minus one**, leaving
-some headroom. To leave more (say you are working on the machine while it fits),
-cap it:
+By default `threading = TRUE` uses **all available cores**. If your machine
+becomes unresponsive during a fit, cap it with `max_cores` (e.g.
+`max_cores = 4`):
 
 ```{r}
 # use at most 4 cores, however many the machine has
@@ -136,8 +136,8 @@ threading**:
 
 ## On a laptop or workstation
 
-Nothing to do: `threading = TRUE` detects your cores and splits them, reserving
-one. To leave more free, use `max_cores`, or cap globally with `mc.cores`:
+Nothing to do: `threading = TRUE` detects your cores and splits them, using all
+of them. To leave some free, use `max_cores`, or cap globally with `mc.cores`:
 
 ```{r}
 options(mc.cores = 6)

@@ -64,13 +64,13 @@ test_that("write_threading records cmdstanr native fields", {
 test_that("stan_options(threading = TRUE) allocates, records, and messages", {
   skip_if_not_installed("withr")
   # Constrain availableCores() to 2 (as under R CMD check) so the result is
-  # deterministic: pool = max(1, 2 - 1) = 1 -> one chain, one thread.
+  # deterministic: pool = 2 (all) -> optimal_alloc(4, 2) = 2 chains, 1 thread.
   withr::local_envvar(`_R_CHECK_LIMIT_CORES_` = "TRUE")
   expect_message(
     opts <- stan_options(chains = 4, threading = TRUE),
     "threading enabled"
   )
-  expect_equal(opts$cores, 1L)
+  expect_equal(opts$cores, 2L)
   expect_equal(opts$threads_per_chain, 1L)
   expect_identical(opts$backend, "rstan")
 })
@@ -86,10 +86,10 @@ test_that("stan_options(threading = TRUE) caps the pool at max_cores", {
 
 test_that("apply_auto_threading splits a multi-core pool (mocked cores)", {
   testthat::local_mocked_bindings(detect_cores = function() 16L)
-  # pool = 16 - 1 = 15; optimal_alloc(4, 15) -> 4 chains, 15 %/% 4 = 3 threads
+  # pool = 16 (all); optimal_alloc(4, 16) -> 4 chains, 16 %/% 4 = 4 threads
   res <- suppressMessages(apply_auto_threading(list(backend = "rstan", chains = 4L)))
   expect_equal(res$cores, 4L)
-  expect_equal(res$threads_per_chain, 3L)
+  expect_equal(res$threads_per_chain, 4L)
   # cmdstanr, capped: pool = min(16, 8) = 8; optimal_alloc(2, 8) -> 2 chains, 4 threads
   res2 <- suppressMessages(
     apply_auto_threading(list(backend = "cmdstanr", chains = 2L), max_cores = 8)
@@ -100,10 +100,10 @@ test_that("apply_auto_threading splits a multi-core pool (mocked cores)", {
 
 test_that("apply_auto_threading messages the cores actually used, not the pool", {
   testthat::local_mocked_bindings(detect_cores = function() 8L)
-  # 8 cores, reserve 1 -> pool 7; optimal_alloc(4, 7) -> 4 chains x 1 thread = 4 used
+  # 8 cores, all used -> pool 8; optimal_alloc(4, 8) -> 4 chains x 2 threads = 8 used
   expect_message(
     apply_auto_threading(list(backend = "rstan", chains = 4L)),
-    "Using 4 of 8"
+    "Using 8 of 8"
   )
 })
 
