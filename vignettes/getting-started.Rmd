@@ -16,10 +16,11 @@ library(flexstanr)
 ```
 
 flexstanr gives a Stan-based R package **one interface** for fitting its models
-through either [rstan](https://mc-stan.org/rstan/) or (optionally)
-[cmdstanr](https://mc-stan.org/cmdstanr/). Your package supplies its own compiled
-models; flexstanr resolves them at run time, so the same fitting code works
-whichever backend is installed.
+through either [rstan](https://mc-stan.org/rstan/) or
+[cmdstanr](https://mc-stan.org/cmdstanr/), neither of which flexstanr requires
+(install whichever you use). Your package supplies its own compiled models;
+flexstanr resolves them at run time, so the same fitting code works whichever
+backend is installed.
 
 This vignette walks through wiring flexstanr into a host package and using it.
 
@@ -31,17 +32,17 @@ From the root of your Stan package, run the setup helper once:
 flexstanr::use_flexstanr()
 ```
 
-This adds `flexstanr` (and `rstan`, the default backend) to your `Imports` and,
-while flexstanr is still pre-CRAN, an interim `Remotes: ACCIDDA/flexstanr` entry
-so `remotes` / `pak` can install it from GitHub. Once flexstanr is on CRAN, pass
-`on_cran = TRUE` to skip the `Remotes` entry.
+This adds `flexstanr` (and `rstan`, the default backend) to your `Imports`. While
+flexstanr is still pre-CRAN, pass `remote = "ACCIDDA/flexstanr"` to also record a
+`Remotes: ACCIDDA/flexstanr` entry so `remotes` / `pak` can install it from
+GitHub; drop the argument once flexstanr is on CRAN.
 
 ## Building sampler options
 
 `stan_options()` collects and validates sampler arguments for the chosen
 backend, forwarding them **verbatim** so a call feels native to that backend:
 
-```{r}
+```{r, eval = requireNamespace("rstan", quietly = TRUE)}
 opts <- stan_options(chains = 2, iter = 500, seed = 1)
 str(opts)
 ```
@@ -49,7 +50,7 @@ str(opts)
 Each backend has its own argument vocabulary, and mixing them is caught early
 with a "did you mean" hint rather than failing deep inside the sampler:
 
-```{r}
+```{r, eval = requireNamespace("rstan", quietly = TRUE)}
 # `parallel_chains` is a cmdstanr word; the rstan backend rejects it.
 try(stan_options(backend = "rstan", parallel_chains = 4))
 ```

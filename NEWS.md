@@ -1,3 +1,11 @@
+# flexstanr 0.2.0 (development)
+
+* rstan and cmdstanr are now equally optional backends. rstan moved from
+  `Imports` to `Suggests`, so flexstanr installs and loads without either
+  package; selecting a backend whose package is not installed fails with an
+  actionable error, and an attach-time message points the way when neither is
+  present. Install whichever backend you use (#30).
+
 # flexstanr 0.1.0
 
 Initial release: a portable Stan-backend layer that a Stan-based R package can

@@ -1,4 +1,4 @@
-# A portable Stan-backend layer (rstan, with an optional cmdstanr backend) for R
+# A portable Stan-backend layer (rstan or cmdstanr, neither required) for R
 # packages that fit a Stan model. Option construction, the cross-backend
 # vocabulary guard, the per-backend fit functions, and the backend-agnostic
 # fit-consumption accessors. Each fit function forwards the user's
@@ -64,24 +64,44 @@ assert_backend_vocab <- function(arg_names, backend) {
   invisible(arg_names)
 }
 
+#' Is a backend's package installed?
+#'
+#' A one-line seam over [requireNamespace()] so tests can simulate a missing
+#' backend (via [testthat::local_mocked_bindings()]) instead of uninstalling a
+#' package. Both backends are optional, so every backend-availability decision
+#' routes through here.
+#'
+#' @param backend the backend package name (`"rstan"` or `"cmdstanr"`).
+#' @returns logical; `TRUE` if the backend package is installed.
+#' @keywords internal
+backend_installed <- function(backend) {
+  requireNamespace(backend, quietly = TRUE)
+}
+
 #' Assert a backend name is valid and its package is installed
 #'
 #' Validates `backend` against the known choices (so it also subsumes
-#' `match.arg()`) and, for the optional cmdstanr backend, that its package is
-#' installed. rstan is always available (a hard dependency); cmdstanr is
-#' optional, so selecting it without the package installed fails early here
-#' rather than deep inside the fit. Returns the validated backend invisibly.
+#' `match.arg()`) and that the selected backend's package is installed. rstan and
+#' cmdstanr are both optional (each lives in `Suggests`), so selecting either
+#' without its package installed fails early here, with an actionable install
+#' hint, rather than deep inside the fit. Returns the validated backend
+#' invisibly.
 #'
 #' @param backend the backend to validate.
 #' @returns the validated backend string, invisibly.
 #' @keywords internal
 assert_backend_available <- function(backend) {
   backend <- match.arg(backend, c("rstan", "cmdstanr"))
-  if (backend == "cmdstanr" && !requireNamespace("cmdstanr", quietly = TRUE)) {
+  if (!backend_installed(backend)) {
+    hint <- switch(
+      backend,
+      rstan    = "Install it with install.packages('rstan')",
+      cmdstanr = "Install it from https://mc-stan.org/cmdstanr/"
+    )
+    other <- if (backend == "rstan") "cmdstanr" else "rstan"
     stop(
-      "backend = 'cmdstanr' requires the cmdstanr package, which is not ",
-      "installed. Install it from https://mc-stan.org/cmdstanr/, or use ",
-      "backend = 'rstan'.",
+      "backend = '", backend, "' requires the ", backend, " package, which is ",
+      "not installed. ", hint, ", or use backend = '", other, "'.",
       call. = FALSE
     )
   }
@@ -152,12 +172,14 @@ assert_positive_int <- function(val, name) {
 #'   `parallel_chains`, ...).
 #' @param backend which Stan interface to target, one of `"rstan"` (default) or
 #'   `"cmdstanr"`. Determines which argument vocabulary is accepted and which
-#'   sampler [fit_model()] calls. Selecting `"cmdstanr"` errors if the cmdstanr
-#'   package is not installed.
+#'   sampler [fit_model()] calls. Both backends are optional; selecting one
+#'   errors if its package is not installed.
 #'
 #' @examples
-#' stan_options()
-#' stan_options(chains = 2, iter = 500)
+#' if (requireNamespace("rstan", quietly = TRUE)) {
+#'   stan_options()
+#'   stan_options(chains = 2, iter = 500)
+#' }
 #' if (requireNamespace("cmdstanr", quietly = TRUE)) {
 #'   stan_options(backend = "cmdstanr", parallel_chains = 4, iter_warmup = 500)
 #' }
@@ -576,7 +598,6 @@ backend_draws_array <- function(raw_fit) {
 #' @param pars character vector of parameter names to extract.
 #' @param ... forwarded to the backend's extractor.
 #' @returns a named list of draw arrays, one per parameter.
-#' @importFrom rstan extract
 #'
 #' @examples
 #' \dontrun{
@@ -587,7 +608,10 @@ backend_draws_array <- function(raw_fit) {
 backend_extract <- function(raw_fit, pars, ...) {
   switch(
     fit_backend(raw_fit),
-    rstan = rstan::extract(raw_fit, pars = pars, ...),
+    rstan = {
+      assert_backend_available("rstan")
+      rstan::extract(raw_fit, pars = pars, ...)
+    },
     # nocov start: needs a live cmdstanr fit + CmdStan toolchain for $draws().
     cmdstanr = cmdstanr_extract(raw_fit$draws(variables = pars), pars)
     # nocov end
@@ -609,7 +633,6 @@ backend_extract <- function(raw_fit, pars, ...) {
 #' @param package the host package the model belongs to; defaults to the calling
 #'   package (see [fit_model()]). Only used by the cmdstanr backend.
 #' @returns a matrix of the requested generated parameter (rows = draws).
-#' @importFrom rstan gqs
 #'
 #' @examples
 #' \dontrun{
@@ -628,10 +651,13 @@ backend_generate_quantities <- function(raw_fit, data, draws_mat, pars,
   }
   switch(
     fit_backend(raw_fit),
-    rstan = as.matrix(
-      rstan::gqs(raw_fit@stanmodel, data = data, draws = draws_mat),
-      pars = pars
-    ),
+    rstan = {
+      assert_backend_available("rstan")
+      as.matrix(
+        rstan::gqs(raw_fit@stanmodel, data = data, draws = draws_mat),
+        pars = pars
+      )
+    },
     cmdstanr = {
       if (is.null(model_name)) {
         stop(
