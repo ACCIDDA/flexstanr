@@ -21,6 +21,13 @@ reference:
   contents:
   - stan_options
   - fit_model
+- title: Threading
+  desc: >
+    Turn on scheduler-aware threading with stan_options(threading = TRUE); a
+    host's fit function checks whether threads were requested so it can warn on a
+    model that cannot use them.
+  contents:
+  - test_threaded
 - title: Reading a fit
   desc: Backend-agnostic accessors for a fitted model object.
   contents:
