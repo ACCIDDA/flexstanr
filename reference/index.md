@@ -16,6 +16,15 @@ Build sampler options and fit a model through the chosen backend.
 - [`fit_model()`](https://accidda.github.io/flexstanr/reference/fit_model.md)
   : Fit a Stan model through the chosen backend
 
+## Threading
+
+Turn on scheduler-aware threading with stan_options(threading = TRUE); a
+host’s fit function checks whether threads were requested so it can warn
+on a model that cannot use them.
+
+- [`test_threaded()`](https://accidda.github.io/flexstanr/reference/test_threaded.md)
+  : Does a set of sampler options ask for within-chain threading?
+
 ## Reading a fit
 
 Backend-agnostic accessors for a fitted model object.

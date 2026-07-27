@@ -13,7 +13,13 @@ per-chain structures from it.
 ## Usage
 
 ``` r
-stan_options(..., chains = 4L, backend = "rstan")
+stan_options(
+  ...,
+  chains = 4L,
+  backend = "rstan",
+  threading = FALSE,
+  max_cores = NULL
+)
 ```
 
 ## Arguments
@@ -40,10 +46,31 @@ stan_options(..., chains = 4L, backend = "rstan")
   calls. Selecting `"cmdstanr"` errors if the cmdstanr package is not
   installed.
 
+- threading:
+
+  `TRUE` to let flexstanr use the machine's spare cores: it splits the
+  cores the process is allowed to use across the chains and the
+  within-chain (`reduce_sum`) threads, and messages what it chose.
+  `FALSE` (the default) leaves parallelism untouched, so you can still
+  set `cores` (rstan) or `parallel_chains` / `threads_per_chain`
+  (cmdstanr) by hand. A model that cannot use the offered threads should
+  say so; see
+  [`test_threaded()`](https://accidda.github.io/flexstanr/reference/test_threaded.md).
+
+- max_cores:
+
+  when `threading = TRUE`, an optional cap on the cores used. `NULL`
+  (the default) uses all available cores; set it to leave some free /
+  cap usage for other work. Ignored when `threading = FALSE`.
+
 ## Value
 
 a named list of validated sampler arguments, carrying a `backend`
 element recording the backend it was built for
+
+## See also
+
+[`test_threaded()`](https://accidda.github.io/flexstanr/reference/test_threaded.md)
 
 ## Examples
 
@@ -64,6 +91,20 @@ stan_options(chains = 2, iter = 500)
 #> 
 #> $backend
 #> [1] "rstan"
+#> 
+stan_options(chains = 4, threading = TRUE)  # allocate spare cores to threads
+#> flexstanr: threading enabled. Using 4 of 4 available cores: 4 chains in parallel, 1 thread per chain. Pass max_cores to leave some cores free.
+#> $chains
+#> [1] 4
+#> 
+#> $backend
+#> [1] "rstan"
+#> 
+#> $cores
+#> [1] 4
+#> 
+#> $threads_per_chain
+#> [1] 1
 #> 
 if (requireNamespace("cmdstanr", quietly = TRUE)) {
   stan_options(backend = "cmdstanr", parallel_chains = 4, iter_warmup = 500)
