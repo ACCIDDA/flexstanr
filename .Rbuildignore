@@ -8,3 +8,4 @@
 ^pkgdown$
 ^\.covignore$
 ^cran-comments\.md$
+^AGENTS\.md$
