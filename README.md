@@ -25,7 +25,7 @@ models, and flexstanr resolves them from the calling package at run time.
 - `stan_options(threading = TRUE)` turns on scheduler-aware threading: it splits
   the cores the process is allowed to use (via `parallelly::availableCores()`,
   respecting HPC schedulers and cgroup quotas) between running chains in parallel
-  and within-chain (`reduce_sum`) threads, uses all available cores by default
+  and within-chain (`reduce_sum`) threads, draws on all available cores by default
   (cap the pool with `max_cores`), and messages what it chose. `test_threaded()`
   lets a host package's fit function detect that within-chain threads were
   requested, so it can warn when its own model cannot use them.
@@ -100,8 +100,9 @@ fit  <- flexstanr::fit_model(
 
 `threading = TRUE` fills chain-parallelism first (it carries no threading
 overhead), gives the leftover cores to within-chain threads, and applies the
-split to whichever backend you use. It uses all available cores by default; pass
-`max_cores` to leave some free:
+split to whichever backend you use. By default it draws on all available cores;
+any that do not divide evenly across the chains are left idle rather than
+rebalanced. Pass `max_cores` to cap the pool:
 
 ```r
 opts <- flexstanr::stan_options(chains = 4, threading = TRUE, max_cores = 8)
