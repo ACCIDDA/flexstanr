@@ -95,11 +95,12 @@ flexstanr_reexport_source <- function() {
 #' @description
 #' A one-time setup helper, in the spirit of usethis's [usethis::use_package()],
 #' that declares flexstanr as a dependency of the host package you run it from.
-#' It adds flexstanr (and rstan, the default backend) to the host's `Imports`,
-#' optionally records a `Remotes` entry for a non-CRAN install, and writes a
-#' generated re-export file (`R/flexstanr.R`) so `host::stan_options()` keeps
-#' resolving and the host's internal calls to [fit_model()] / the `backend_*`
-#' accessors are imported.
+#' It adds flexstanr to the host's `Imports`, optionally records a `Remotes`
+#' entry for a non-CRAN install, and writes a generated re-export file
+#' (`R/flexstanr.R`) so `host::stan_options()` keeps resolving and the host's
+#' internal calls to [fit_model()] / the `backend_*` accessors are imported.
+#' It does not add a Stan backend: flexstanr requires neither rstan nor cmdstanr,
+#' so the host declares whichever backend it uses.
 #'
 #' The re-export file is generated: it carries a do-not-edit banner and is
 #' overwritten on each run, so re-run `use_flexstanr()` to pick up changes to
@@ -155,12 +156,10 @@ use_flexstanr <- function(path = ".",
   }
   d <- desc::desc(file = desc_path)
 
-  # Declare flexstanr (with the resolved version constraint) and its default
-  # backend. Do not clobber an existing rstan constraint the host already sets.
+  # Declare flexstanr (with the resolved version constraint). No backend is
+  # added: flexstanr requires neither rstan nor cmdstanr, so the host picks and
+  # declares its own backend.
   d$set_dep("flexstanr", type, version = .flexstanr_version_constraint(min_version))
-  if (!"rstan" %in% d$get_deps()$package) {
-    d$set_dep("rstan", "Imports")
-  }
 
   # Optional Remotes entry for installing flexstanr off-CRAN (development build).
   if (!is.null(remote)) {

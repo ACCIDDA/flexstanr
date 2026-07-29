@@ -1,14 +1,15 @@
 # Tests for the use_flexstanr() setup helper. These operate on a throwaway
 # fixture DESCRIPTION so nothing touches a real project.
 
-make_fixture_pkg <- function(dir, remotes = NULL) {
+make_fixture_pkg <- function(dir, remotes = NULL, imports = NULL) {
   lines <- c(
     "Package: hostpkg",
     "Title: A Host",
-    "Version: 0.0.1",
-    "Imports:",
-    "    rstan (>= 2.18.1)"
+    "Version: 0.0.1"
   )
+  if (!is.null(imports)) {
+    lines <- c(lines, "Imports:", paste0("    ", imports))
+  }
   if (!is.null(remotes)) {
     lines <- c(lines, paste0("Remotes:\n    ", remotes))
   }
@@ -28,6 +29,19 @@ test_that("use_flexstanr adds flexstanr to Imports and records no Remotes by def
   expect_true("flexstanr" %in% deps$package[deps$type == "Imports"])
   # CRAN case: no Remotes entry unless a remote is requested.
   expect_length(d$get_remotes(), 0L)
+})
+
+test_that("use_flexstanr does not add a Stan backend", {
+  skip_if_not_installed("desc")
+  dir <- withr::local_tempdir()
+  make_fixture_pkg(dir)
+
+  use_flexstanr(path = dir)
+
+  # flexstanr requires neither backend; the host declares its own.
+  deps <- desc::desc(file = file.path(dir, "DESCRIPTION"))$get_deps()
+  expect_false("rstan" %in% deps$package)
+  expect_false("cmdstanr" %in% deps$package)
 })
 
 test_that("min_version = NULL pins flexstanr to the installed version", {
@@ -63,7 +77,7 @@ test_that("min_version accepts an explicit version, and FALSE drops the constrai
 test_that("use_flexstanr does not clobber an existing rstan version constraint", {
   skip_if_not_installed("desc")
   dir <- withr::local_tempdir()
-  make_fixture_pkg(dir)
+  make_fixture_pkg(dir, imports = "rstan (>= 2.18.1)")
 
   use_flexstanr(path = dir)
 

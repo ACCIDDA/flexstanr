@@ -63,6 +63,7 @@ test_that("write_threading records cmdstanr native fields", {
 
 test_that("stan_options(threading = TRUE) allocates, records, and messages", {
   skip_if_not_installed("withr")
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
   # Constrain availableCores() to 2 (as under R CMD check) so the result is
   # deterministic: pool = 2 (all) -> optimal_alloc(4, 2) = 2 chains, 1 thread.
   withr::local_envvar(`_R_CHECK_LIMIT_CORES_` = "TRUE")
@@ -76,6 +77,7 @@ test_that("stan_options(threading = TRUE) allocates, records, and messages", {
 })
 
 test_that("stan_options(threading = TRUE) caps the pool at max_cores", {
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
   # max_cores = 1 forces a single-core pool regardless of the test machine.
   suppressMessages(
     opts <- stan_options(chains = 4, threading = TRUE, max_cores = 1)
@@ -108,10 +110,12 @@ test_that("apply_auto_threading messages the cores actually used, not the pool",
 })
 
 test_that("threading = TRUE rejects a manually-supplied core argument", {
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
   expect_error(stan_options(cores = 8, threading = TRUE), "automatically")
 })
 
 test_that("stan_options(threading = FALSE) leaves parallelism untouched", {
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
   opts <- stan_options(chains = 4)
   expect_null(opts$cores)
   expect_null(opts$threads_per_chain)
@@ -119,6 +123,7 @@ test_that("stan_options(threading = FALSE) leaves parallelism untouched", {
 })
 
 test_that("stan_options validates the threading flag and max_cores", {
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
   expect_error(stan_options(threading = "yes"), "TRUE or FALSE")
   expect_error(stan_options(threading = NA), "TRUE or FALSE")
   expect_error(stan_options(threading = c(TRUE, FALSE)), "TRUE or FALSE")
@@ -148,6 +153,7 @@ test_that("with_stan_num_threads restores a previously-unset var", {
 # --- test_threaded ----------------------------------------------------------
 
 test_that("test_threaded reflects the requested threads_per_chain", {
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
   expect_true(test_threaded(list(threads_per_chain = 4L)))
   expect_false(test_threaded(list(threads_per_chain = 1L)))
   expect_false(test_threaded(list()))

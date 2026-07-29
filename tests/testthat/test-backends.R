@@ -22,16 +22,30 @@ test_that("assert_positive_int coerces valid input and rejects invalid", {
   expect_error(assert_positive_int(0L, "x"), "positive")
 })
 
-test_that("backend_int_args and assert_backend_available behave", {
+test_that("backend_int_args and assert_backend_available validate names", {
   expect_identical(backend_int_args("rstan"), c("iter", "chains", "warmup", "cores"))
   expect_true("threads_per_chain" %in% backend_int_args("cmdstanr"))
-  expect_identical(assert_backend_available("rstan"), "rstan")
   expect_error(assert_backend_available("nonsense"), "should be one of")
+  # With the backend installed, a valid name passes through unchanged. Mock the
+  # availability seam so this holds regardless of which backends are installed.
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
+  expect_identical(assert_backend_available("rstan"), "rstan")
+  expect_identical(assert_backend_available("cmdstanr"), "cmdstanr")
+})
+
+test_that("assert_backend_available errors with an install hint when missing", {
+  local_mocked_bindings(backend_installed = function(backend) FALSE)
+  expect_error(assert_backend_available("rstan"), "requires the rstan package")
+  expect_error(assert_backend_available("rstan"), "install.packages\\('rstan'\\)")
+  expect_error(assert_backend_available("rstan"), "use backend = 'cmdstanr'")
+  expect_error(assert_backend_available("cmdstanr"), "requires the cmdstanr package")
+  expect_error(assert_backend_available("cmdstanr"), "mc-stan.org/cmdstanr")
 })
 
 # --- stan_options ------------------------------------------------------------
 
 test_that("stan_options defaults and rejects illegal arguments", {
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
   expect_identical(stan_options()$backend, "rstan")
   expect_identical(stan_options()$chains, 4L)
   expect_error(stan_options(backend = "nonsense"))
@@ -39,6 +53,12 @@ test_that("stan_options defaults and rejects illegal arguments", {
   expect_error(stan_options(object = 1), "object")
   expect_error(stan_options(data = 1), "data")
   expect_error(stan_options(init = 1), "init")
+})
+
+test_that("stan_options surfaces the missing-backend error early", {
+  local_mocked_bindings(backend_installed = function(backend) FALSE)
+  expect_error(stan_options(), "requires the rstan package")
+  expect_error(stan_options(backend = "cmdstanr"), "requires the cmdstanr package")
 })
 
 # test_threaded is covered in test-threading.R (it reads threads_per_chain).
@@ -78,6 +98,7 @@ test_that("get_stanmodel errors clearly when the host has no models", {
 })
 
 test_that("fit_model auto-detects the CALLING package, not flexstanr", {
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
   # Regression: `package = caller_package()` as a default argument resolved to
   # flexstanr itself. Put a host function in the `tools` namespace (a base
   # package with no stanmodels) and call fit_model() with no `package` -- the
@@ -92,6 +113,7 @@ test_that("fit_model auto-detects the CALLING package, not flexstanr", {
 })
 
 test_that("fit_model errors when the caller has no package (global env)", {
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
   host <- function() {
     fit_model("coverage", dat_stan = list(), init = list(),
               stan_opts = stan_options())
@@ -101,9 +123,22 @@ test_that("fit_model errors when the caller has no package (global env)", {
 })
 
 test_that("fit_model reports a resolvable-but-modelless package (explicit)", {
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
   expect_error(
     fit_model("coverage", dat_stan = list(), init = list(),
               stan_opts = stan_options(), package = "methods"),
     "no 'stanmodels'"
   )
+})
+
+# --- attach-time backend detection -------------------------------------------
+
+test_that("missing_backend_message guides the user when no backend is installed", {
+  local_mocked_bindings(backend_installed = function(backend) FALSE)
+  expect_match(missing_backend_message(), "neither 'rstan' nor 'cmdstanr' is")
+})
+
+test_that("missing_backend_message is NULL when a backend is installed", {
+  local_mocked_bindings(backend_installed = function(backend) backend == "rstan")
+  expect_null(missing_backend_message())
 })

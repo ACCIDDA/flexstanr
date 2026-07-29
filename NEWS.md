@@ -10,9 +10,15 @@
   new exported `test_threaded()` lets a host package's fit function warn when
   its model cannot use the offered threads. See the new "Parallel and threaded
   fitting" vignette.
+* rstan and cmdstanr are now equally optional backends. rstan moved from
+  `Imports` to `Suggests`, so flexstanr installs and loads without either
+  package; selecting a backend whose package is not installed fails with an
+  actionable error, and an attach-time message points the way when neither is
+  present. Install whichever backend you use (#30).
 * `use_flexstanr()` now generates the host package's re-export file (with a
   do-not-edit banner) in addition to editing its `DESCRIPTION`, and its
-  signature mirrors `usethis::use_package()` (`min_version`, `remote`).
+  signature mirrors `usethis::use_package()` (`min_version`, `remote`). It wires
+  in flexstanr only; pick and declare a backend (rstan or cmdstanr) yourself.
 
 # flexstanr 0.1.0
 

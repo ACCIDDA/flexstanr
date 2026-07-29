@@ -5,9 +5,9 @@
 
 A **portable Stan-backend layer** for R packages that fit a Stan model. It gives
 a host package one interface for fitting through either
-[rstan](https://mc-stan.org/rstan/) or (optionally)
-[cmdstanr](https://mc-stan.org/cmdstanr/), so the same code works whichever
-backend is installed.
+[rstan](https://mc-stan.org/rstan/) or
+[cmdstanr](https://mc-stan.org/cmdstanr/), neither of which is required to
+install flexstanr, so the same code works whichever backend is installed.
 
 flexstanr compiles no Stan of its own: the host package supplies its own compiled
 models, and flexstanr resolves them from the calling package at run time.
@@ -32,9 +32,12 @@ flexstanr is not yet on CRAN. Install the development version from GitHub:
 remotes::install_github("ACCIDDA/flexstanr")
 ```
 
-The default backend, rstan, is a hard dependency. cmdstanr is an optional
-backend; it is not on CRAN, so a project that wants it installs it separately
-(see the cmdstanr [getting-started guide](https://mc-stan.org/cmdstanr/)).
+flexstanr depends on neither backend directly: rstan and cmdstanr are both
+optional, so you install whichever you use. rstan is the default backend and is
+on CRAN (`install.packages("rstan")`); cmdstanr is not on CRAN, so install it
+separately (see the cmdstanr [getting-started guide](https://mc-stan.org/cmdstanr/)).
+Selecting a backend whose package is not installed fails with an actionable
+message.
 
 ## Using it in your package
 
