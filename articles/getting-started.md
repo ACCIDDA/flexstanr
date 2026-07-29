@@ -2,9 +2,10 @@
 
 flexstanr gives a Stan-based R package **one interface** for fitting its
 models through either [rstan](https://mc-stan.org/rstan/) or
-(optionally) [cmdstanr](https://mc-stan.org/cmdstanr/). Your package
-supplies its own compiled models; flexstanr resolves them at run time,
-so the same fitting code works whichever backend is installed.
+[cmdstanr](https://mc-stan.org/cmdstanr/), neither of which flexstanr
+requires (install whichever you use). Your package supplies its own
+compiled models; flexstanr resolves them at run time, so the same
+fitting code works whichever backend is installed.
 
 This vignette walks through wiring flexstanr into a host package and
 using it.
@@ -18,11 +19,12 @@ From the root of your Stan package, run the setup helper once:
 flexstanr::use_flexstanr()
 ```
 
-This adds `flexstanr` (and `rstan`, the default backend) to your
-`Imports` and, while flexstanr is still pre-CRAN, an interim
+This adds `flexstanr` to your `Imports`. It does not add a Stan backend,
+since flexstanr requires neither; declare `rstan` or `cmdstanr`
+yourself. While flexstanr is still pre-CRAN, pass
+`remote = "ACCIDDA/flexstanr"` to also record a
 `Remotes: ACCIDDA/flexstanr` entry so `remotes` / `pak` can install it
-from GitHub. Once flexstanr is on CRAN, pass `on_cran = TRUE` to skip
-the `Remotes` entry.
+from GitHub; drop the argument once flexstanr is on CRAN.
 
 ## Building sampler options
 

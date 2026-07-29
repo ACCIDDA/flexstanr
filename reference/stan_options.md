@@ -43,8 +43,8 @@ stan_options(
   `"cmdstanr"`. Determines which argument vocabulary is accepted and
   which sampler
   [`fit_model()`](https://accidda.github.io/flexstanr/reference/fit_model.md)
-  calls. Selecting `"cmdstanr"` errors if the cmdstanr package is not
-  installed.
+  calls. Both backends are optional; selecting one errors if its package
+  is not installed.
 
 - threading:
 
@@ -75,24 +75,11 @@ element recording the backend it was built for
 ## Examples
 
 ``` r
-stan_options()
-#> $chains
-#> [1] 4
-#> 
-#> $backend
-#> [1] "rstan"
-#> 
-stan_options(chains = 2, iter = 500)
-#> $iter
-#> [1] 500
-#> 
-#> $chains
-#> [1] 2
-#> 
-#> $backend
-#> [1] "rstan"
-#> 
-stan_options(chains = 4, threading = TRUE)  # allocate spare cores to threads
+if (requireNamespace("rstan", quietly = TRUE)) {
+  stan_options()
+  stan_options(chains = 2, iter = 500)
+  stan_options(chains = 4, threading = TRUE)  # allocate spare cores to threads
+}
 #> flexstanr: threading enabled. Using 4 of 4 available cores: 4 chains in parallel, 1 thread per chain. Pass max_cores to leave some cores free.
 #> $chains
 #> [1] 4

@@ -75,7 +75,8 @@
     
     
 <p>flexstanr gives a Stan-based R package <strong>one interface</strong>
-for fitting its models through either <a href="https://mc-stan.org/rstan/" class="external-link">rstan</a> or (optionally) <a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a>. Your package supplies
+for fitting its models through either <a href="https://mc-stan.org/rstan/" class="external-link">rstan</a> or <a href="https://mc-stan.org/cmdstanr/" class="external-link">cmdstanr</a>, neither of which
+flexstanr requires (install whichever you use). Your package supplies
 its own compiled models; flexstanr resolves them at run time, so the
 same fitting code works whichever backend is installed.</p>
 <p>This vignette walks through wiring flexstanr into a host package and
@@ -86,12 +87,13 @@ using it.</p>
 <p>From the root of your Stan package, run the setup helper once:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">flexstanr</span><span class="fu">::</span><span class="fu"><a href="../reference/use_flexstanr.html">use_flexstanr</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>This adds <code>flexstanr</code> (and <code>rstan</code>, the default
-backend) to your <code>Imports</code> and, while flexstanr is still
-pre-CRAN, an interim <code>Remotes: ACCIDDA/flexstanr</code> entry so
-<code>remotes</code> / <code>pak</code> can install it from GitHub. Once
-flexstanr is on CRAN, pass <code>on_cran = TRUE</code> to skip the
-<code>Remotes</code> entry.</p>
+<p>This adds <code>flexstanr</code> to your <code>Imports</code>. It
+does not add a Stan backend, since flexstanr requires neither; declare
+<code>rstan</code> or <code>cmdstanr</code> yourself. While flexstanr is
+still pre-CRAN, pass <code>remote = "ACCIDDA/flexstanr"</code> to also
+record a <code>Remotes: ACCIDDA/flexstanr</code> entry so
+<code>remotes</code> / <code>pak</code> can install it from GitHub; drop
+the argument once flexstanr is on CRAN.</p>
 </div>
 <div class="section level2">
 <h2 id="building-sampler-options">Building sampler options<a class="anchor" aria-label="anchor" href="#building-sampler-options"></a>

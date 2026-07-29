@@ -97,8 +97,8 @@ sampler. Use the backend's own names: for <code>"rstan"</code>, the
 <dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
 <dd><p>which Stan interface to target, one of <code>"rstan"</code> (default) or
 <code>"cmdstanr"</code>. Determines which argument vocabulary is accepted and which
-sampler <code><a href="fit_model.html">fit_model()</a></code> calls. Selecting <code>"cmdstanr"</code> errors if the cmdstanr
-package is not installed.</p></dd>
+sampler <code><a href="fit_model.html">fit_model()</a></code> calls. Both backends are optional; selecting one
+errors if its package is not installed.</p></dd>
 
 
 <dt id="arg-threading">threading<a class="anchor" aria-label="anchor" href="#arg-threading"></a></dt>
@@ -129,24 +129,11 @@ element recording the backend it was built for</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">stan_options</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $chains</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $backend</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "rstan"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span><span class="fu">stan_options</span><span class="op">(</span>chains <span class="op">=</span> <span class="fl">2</span>, iter <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $iter</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 500</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $chains</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $backend</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "rstan"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span><span class="fu">stan_options</span><span class="op">(</span>chains <span class="op">=</span> <span class="fl">4</span>, threading <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>  <span class="co"># allocate spare cores to threads</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"rstan"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="fu">stan_options</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu">stan_options</span><span class="op">(</span>chains <span class="op">=</span> <span class="fl">2</span>, iter <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu">stan_options</span><span class="op">(</span>chains <span class="op">=</span> <span class="fl">4</span>, threading <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>  <span class="co"># allocate spare cores to threads</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> flexstanr: threading enabled. Using 4 of 4 available cores: 4 chains in parallel, 1 thread per chain. Pass max_cores to leave some cores free.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $chains</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4</span>
