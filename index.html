@@ -77,22 +77,29 @@
 <li>
 <code><a href="reference/fit_model.html">fit_model()</a></code> dispatches the fit to the backend recorded on the options, resolving the compiled model by name from the calling package.</li>
 <li>The fit-consumption accessors read a fit backend-agnostically: <code><a href="reference/backend_draws_array.html">backend_draws_array()</a></code>, <code><a href="reference/backend_extract.html">backend_extract()</a></code>, <code><a href="reference/backend_generate_quantities.html">backend_generate_quantities()</a></code>, and <code><a href="reference/backend_has_draws.html">backend_has_draws()</a></code>.</li>
+<li>
+<code>stan_options(threading = TRUE)</code> turns on scheduler-aware threading: it splits the cores the process is allowed to use (via <code><a href="https://parallelly.futureverse.org/reference/availableCores.html" class="external-link">parallelly::availableCores()</a></code>, respecting HPC schedulers and cgroup quotas) between running chains in parallel and within-chain (<code>reduce_sum</code>) threads, draws on all available cores by default (cap the pool with <code>max_cores</code>), and messages what it chose. <code><a href="reference/test_threaded.html">test_threaded()</a></code> lets a host package’s fit function detect that within-chain threads were requested, so it can warn when its own model cannot use them.</li>
+<li>
+<code><a href="reference/use_flexstanr.html">use_flexstanr()</a></code> wires flexstanr into a host package once: it adds flexstanr to the host’s <code>Imports</code> and generates the re-export file that keeps <code>yourpkg::stan_options()</code> resolving. It adds no Stan backend of its own.</li>
 </ul>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>flexstanr is not yet on CRAN. Install the development version from GitHub:</p>
+<p>Install the released version from CRAN:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"flexstanr"</span><span class="op">)</span></span></code></pre></div>
+<p>Or the development version from GitHub:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"ACCIDDA/flexstanr"</span><span class="op">)</span></span></code></pre></div>
-<p>flexstanr depends on neither backend directly: rstan and cmdstanr are both optional, so you install whichever you use. rstan is the default backend and is on CRAN (<code>install.packages("rstan")</code>); cmdstanr is not on CRAN, so install it separately (see the cmdstanr <a href="https://mc-stan.org/cmdstanr/" class="external-link">getting-started guide</a>). Selecting a backend whose package is not installed fails with an actionable message.</p>
+<p>flexstanr depends on neither backend directly: rstan and cmdstanr are both optional, so you install whichever you use. rstan is the default backend and is on CRAN (<code>install.packages("rstan")</code>); cmdstanr is not on CRAN, so install it separately (see the cmdstanr <a href="https://mc-stan.org/cmdstanr/" class="external-link">getting-started guide</a>). Selecting a backend whose package is not installed fails with an actionable message that names the install command (or points you at the other backend), and loading flexstanr with neither backend installed prints a one-time startup message at attach.</p>
 </div>
 <div class="section level2">
 <h2 id="using-it-in-your-package">Using it in your package<a class="anchor" aria-label="anchor" href="#using-it-in-your-package"></a>
 </h2>
 <p>Declare flexstanr as a dependency and call it from your own fitting code:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># in your package</span></span>
 <span><span class="va">opts</span> <span class="op">&lt;-</span> <span class="fu">flexstanr</span><span class="fu">::</span><span class="fu"><a href="reference/stan_options.html">stan_options</a></span><span class="op">(</span>chains <span class="op">=</span> <span class="fl">4</span>, iter <span class="op">=</span> <span class="fl">2000</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">fit</span>  <span class="op">&lt;-</span> <span class="fu">flexstanr</span><span class="fu">::</span><span class="fu"><a href="reference/fit_model.html">fit_model</a></span><span class="op">(</span></span>
@@ -102,7 +109,44 @@
 <span>  stan_opts <span class="op">=</span> <span class="va">opts</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">draws</span> <span class="op">&lt;-</span> <span class="fu">flexstanr</span><span class="fu">::</span><span class="fu"><a href="reference/backend_draws_array.html">backend_draws_array</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
-<p>The model name is resolved against your package’s own compiled models (<code>stanmodels</code> for rstan, <code>inst/stan/&lt;name&gt;.stan</code> for cmdstanr); the calling package is detected automatically. Run <code><a href="reference/use_flexstanr.html">flexstanr::use_flexstanr()</a></code> once from your package root to wire the dependencies into its DESCRIPTION.</p>
+<p>The model name is resolved against your package’s own compiled models (<code>stanmodels</code> for rstan, <code>inst/stan/&lt;name&gt;.stan</code> for cmdstanr); the calling package is detected automatically. Run <code><a href="reference/use_flexstanr.html">flexstanr::use_flexstanr()</a></code> once from your package root to add flexstanr to your <code>Imports</code> and generate the <code>R/flexstanr.R</code> re-export file (so <code>yourpkg::stan_options()</code> keeps resolving). It does not add a Stan backend, so declare whichever backend (rstan or cmdstanr) you use yourself. Its signature mirrors <code>usethis::use_package()</code> (<code>min_version</code>, <code>remote</code>).</p>
+</div>
+<div class="section level2">
+<h2 id="parallel-and-threaded-fitting">Parallel and threaded fitting<a class="anchor" aria-label="anchor" href="#parallel-and-threaded-fitting"></a>
+</h2>
+<p>Turn on scheduler-aware parallelism with a single switch:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">opts</span> <span class="op">&lt;-</span> <span class="fu">flexstanr</span><span class="fu">::</span><span class="fu"><a href="reference/stan_options.html">stan_options</a></span><span class="op">(</span>chains <span class="op">=</span> <span class="fl">4</span>, threading <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="co">#&gt; flexstanr: threading enabled. Using 16 of 16 available cores: 4 chains in</span></span>
+<span><span class="co">#&gt; parallel, 4 threads per chain. Pass max_cores to leave some cores free.</span></span>
+<span><span class="va">fit</span>  <span class="op">&lt;-</span> <span class="fu">flexstanr</span><span class="fu">::</span><span class="fu"><a href="reference/fit_model.html">fit_model</a></span><span class="op">(</span></span>
+<span>  <span class="st">"coverage"</span>,</span>
+<span>  dat_stan  <span class="op">=</span> <span class="va">data_list</span>,</span>
+<span>  init      <span class="op">=</span> <span class="va">init_list</span>,</span>
+<span>  stan_opts <span class="op">=</span> <span class="va">opts</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p><code>threading = TRUE</code> fills chain-parallelism first (it carries no threading overhead), gives the leftover cores to within-chain threads, and applies the split to whichever backend you use. By default it draws on all available cores; any that do not divide evenly across the chains are left idle rather than rebalanced. Pass <code>max_cores</code> to cap the pool:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">opts</span> <span class="op">&lt;-</span> <span class="fu">flexstanr</span><span class="fu">::</span><span class="fu"><a href="reference/stan_options.html">stan_options</a></span><span class="op">(</span>chains <span class="op">=</span> <span class="fl">4</span>, threading <span class="op">=</span> <span class="cn">TRUE</span>, max_cores <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span></code></pre></div>
+<p>For the cmdstanr backend <code><a href="reference/fit_model.html">fit_model()</a></code> also compiles the model with threading enabled; for rstan, the host package’s models must already have been built with threading support, and flexstanr only sets <code>STAN_NUM_THREADS</code> around the fit. Within-chain threads only help a model that sums a conditionally-independent term with <code>reduce_sum()</code>; flexstanr allocates the threads regardless, but whether they speed anything up is a property of the model.</p>
+<p>If you write a fit function on top of flexstanr, use <code><a href="reference/test_threaded.html">test_threaded()</a></code> to warn when threads were requested but your model cannot use them:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">run_my_fit</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">dat_stan</span>, <span class="va">init</span>, <span class="va">stan_opts</span> <span class="op">=</span> <span class="fu">flexstanr</span><span class="fu">::</span><span class="fu"><a href="reference/stan_options.html">stan_options</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="co"># model_is_threaded: your own check of whether this model uses reduce_sum()</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu">flexstanr</span><span class="fu">::</span><span class="fu"><a href="reference/test_threaded.html">test_threaded</a></span><span class="op">(</span><span class="va">stan_opts</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="va">model_is_threaded</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning</a></span><span class="op">(</span></span>
+<span>      <span class="st">"threads were requested but this model does not use reduce_sum(); "</span>,</span>
+<span>      <span class="st">"it will run one thread per chain."</span>,</span>
+<span>      call. <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="fu">flexstanr</span><span class="fu">::</span><span class="fu"><a href="reference/fit_model.html">fit_model</a></span><span class="op">(</span><span class="st">"coverage"</span>, dat_stan <span class="op">=</span> <span class="va">dat_stan</span>, init <span class="op">=</span> <span class="va">init</span>, stan_opts <span class="op">=</span> <span class="va">stan_opts</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p><code><a href="reference/test_threaded.html">test_threaded()</a></code> reports what the options ask for, not whether the model can honor it, so the warning belongs in your fit function where the model is known. See the “Parallel and threaded fitting” vignette (<code><a href="articles/parallel-hpc.html">vignette("parallel-hpc", package = "flexstanr")</a></code>) for core caps and HPC (SLURM) job layouts.</p>
+</div>
+<div class="section level2">
+<h2 id="background">Background<a class="anchor" aria-label="anchor" href="#background"></a>
+</h2>
 <blockquote>
 <p><strong>Note.</strong> flexstanr began as a <code>use_standalone()</code> script vendored into the ACCIDDA Stan packages (imuGAP, hestia, SeverityEstimate). It is now a proper package those consumers import rather than copy. See the <a href="https://github.com/ACCIDDA/flexstanr/milestone/1" class="external-link">flexstanr 0.1.0 CRAN release</a> milestone.</p>
 </blockquote>

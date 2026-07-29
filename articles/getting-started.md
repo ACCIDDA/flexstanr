@@ -21,10 +21,9 @@ flexstanr::use_flexstanr()
 
 This adds `flexstanr` to your `Imports`. It does not add a Stan backend,
 since flexstanr requires neither; declare `rstan` or `cmdstanr`
-yourself. While flexstanr is still pre-CRAN, pass
-`remote = "ACCIDDA/flexstanr"` to also record a
-`Remotes: ACCIDDA/flexstanr` entry so `remotes` / `pak` can install it
-from GitHub; drop the argument once flexstanr is on CRAN.
+yourself. To track a development build off GitHub instead of the CRAN
+release, pass `remote = "ACCIDDA/flexstanr"` to also record a
+`Remotes: ACCIDDA/flexstanr` entry so `remotes` / `pak` can find it.
 
 ## Building sampler options
 

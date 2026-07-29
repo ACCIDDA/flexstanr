@@ -89,11 +89,11 @@ using it.</p>
 <code class="sourceCode R"><span><span class="fu">flexstanr</span><span class="fu">::</span><span class="fu"><a href="../reference/use_flexstanr.html">use_flexstanr</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>This adds <code>flexstanr</code> to your <code>Imports</code>. It
 does not add a Stan backend, since flexstanr requires neither; declare
-<code>rstan</code> or <code>cmdstanr</code> yourself. While flexstanr is
-still pre-CRAN, pass <code>remote = "ACCIDDA/flexstanr"</code> to also
-record a <code>Remotes: ACCIDDA/flexstanr</code> entry so
-<code>remotes</code> / <code>pak</code> can install it from GitHub; drop
-the argument once flexstanr is on CRAN.</p>
+<code>rstan</code> or <code>cmdstanr</code> yourself. To track a
+development build off GitHub instead of the CRAN release, pass
+<code>remote = "ACCIDDA/flexstanr"</code> to also record a
+<code>Remotes: ACCIDDA/flexstanr</code> entry so <code>remotes</code> /
+<code>pak</code> can find it.</p>
 </div>
 <div class="section level2">
 <h2 id="building-sampler-options">Building sampler options<a class="anchor" aria-label="anchor" href="#building-sampler-options"></a>
