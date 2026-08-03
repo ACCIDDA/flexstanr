@@ -14,9 +14,10 @@ models, and flexstanr resolves them from the calling package at run time.
 
 ## What it provides
 
-- `stan_options()` collects and validates sampler arguments for the chosen
-  backend, forwarding them **verbatim** so calls feel native. Mixing one
-  backend's argument vocabulary into the other errors with a "did you mean" hint.
+- `stan_options()` validates common sampler arguments and forwards arbitrary
+  same-backend arguments **verbatim** to the native sampler for validation.
+  Reserved fitting inputs are rejected, as is known vocabulary from the other
+  backend (with a "did you mean" hint).
 - `fit_model()` dispatches the fit to the backend recorded on the options,
   resolving the compiled model by name from the calling package.
 - The fit-consumption accessors read a fit backend-agnostically:

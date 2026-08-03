@@ -40,16 +40,21 @@ entry so `remotes` / `pak` can find it.
 
 ## Building sampler options
 
-`stan_options()` collects and validates sampler arguments for the chosen
-backend, forwarding them **verbatim** so a call feels native to that backend:
+`stan_options()` validates common sampler arguments and forwards arbitrary
+same-backend arguments **verbatim** to that backend's native sampler. The native
+sampler validates arguments that flexstanr does not recognize:
 
 ```{r, eval = requireNamespace("rstan", quietly = TRUE)}
 opts <- stan_options(chains = 2, iter = 500, seed = 1)
 str(opts)
 ```
 
-Each backend has its own argument vocabulary, and mixing them is caught early
-with a "did you mean" hint rather than failing deep inside the sampler:
+For example, backend-native controls such as rstan's `refresh` or cmdstanr's
+`open_progress` pass through unchanged.
+
+The model object, data, and initial values are reserved for `fit_model()`.
+Mixing known vocabulary from the other backend is also caught early with a
+"did you mean" hint rather than failing deep inside the sampler:
 
 ```{r, eval = requireNamespace("rstan", quietly = TRUE)}
 # `parallel_chains` is a cmdstanr word; the rstan backend rejects it.
