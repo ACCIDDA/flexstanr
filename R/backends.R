@@ -165,7 +165,8 @@ assert_positive_int <- function(val, name) {
 #' of these may be set here. `chains` defaults to `4` so downstream code can
 #' always size per-chain structures from it.
 #'
-#' @inheritParams rstan::sampling
+#' @param chains number of Markov chains to run. Defaults to `4` for both
+#'   backends.
 #' @param ... arbitrary sampler arguments forwarded verbatim to the chosen
 #'   backend's sampler. Use the backend's own names: for `"rstan"`, the
 #'   [rstan::sampling()] arguments (`iter`, `cores`, `seed`); for
@@ -293,7 +294,9 @@ stan_options <- function(..., chains = 4L, backend = "rstan",
 #'   chain, otherwise `FALSE`.
 #'
 #' @examples
-#' test_threaded(stan_options(chains = 2))                 # FALSE (not requested)
+#' if (requireNamespace("rstan", quietly = TRUE)) {
+#'   test_threaded(stan_options(chains = 2))               # FALSE (not requested)
+#' }
 #' test_threaded(list(threads_per_chain = 4L))             # TRUE
 #'
 #' @export
