@@ -1,5 +1,21 @@
 # flexstanr 0.2.0 (development version)
 
+* `backend_extract()` now states its return shape as a contract rather than
+  leaving it to the backend (#34). `pars` defaults to `NULL`, which extracts
+  every parameter, and a new `format` argument picks the representation:
+  `"list"` (the default) is `rstan::extract()`-compatible, `"draws"` returns a
+  `posterior` draws array with the chain structure intact, and `"matrix"`
+  returns a plain draws x variables matrix -- the shape
+  `backend_generate_quantities()` takes as `draws_mat`. Each format has the same
+  shape whichever backend produced the fit, so downstream code no longer has to
+  branch on the backend. Existing calls are unaffected: `format` defaults to the
+  shape `backend_extract()` already returned.
+* Bug fix: the cmdstanr backend returned a scalar parameter as a dimensionless
+  vector, while `rstan::extract()` returns a 1-D array of length `S` for a
+  scalar in every call form. Code that reshapes off `dim()` (`aperm()` errors
+  outright on a dimensionless vector) therefore behaved differently depending on
+  which backend produced the fit. The cmdstanr path now matches rstan. A
+  `vector[1]` is still kept as an `S x 1` matrix on both backends, as rstan does.
 * `stan_options(threading = TRUE)` turns on scheduler-aware threading (ported
   from hestia): flexstanr splits the cores the process is allowed to use --
   detected with `parallelly::availableCores()`, respecting HPC schedulers and

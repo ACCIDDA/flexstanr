@@ -21,14 +21,16 @@ test_that("cmdstanr_extract matches rstan::extract shapes", {
   ex <- cmdstanr_extract(d, c("mu", "theta"))
 
   expect_named(ex, c("mu", "theta"))
-  # a scalar parameter comes back as a bare vector of length S
-  expect_null(dim(ex$mu))
+  # A scalar parameter comes back as a 1-D array of length S -- what
+  # rstan::extract() returns for a scalar, verified against a live rstan fit.
+  # NOT a dimensionless vector: callers reshape off dim().
+  expect_identical(dim(ex$mu), n)
   expect_length(ex$mu, n)
   # a vector parameter comes back as an S x K matrix
   expect_identical(dim(ex$theta), c(n, 8L))
   # values agree (as a set) with a direct posterior pull
   direct <- as.numeric(posterior::as_draws_matrix(posterior::subset_draws(d, "mu")))
-  expect_equal(sort(ex$mu), sort(direct))
+  expect_equal(sort(as.numeric(ex$mu)), sort(direct))
 })
 
 test_that("cmdstanr_extract errors on an unknown parameter", {
@@ -40,14 +42,14 @@ test_that("cmdstanr_extract errors on an unknown parameter", {
 test_that("cmdstanr_extract keeps a length-1 vector as an S x 1 matrix (rstan parity)", {
   skip_if_not_installed("posterior")
   # A scalar `mu` and a length-1 vector `x` (flat name "x[1]"). rstan::extract()
-  # returns a bare vector for the scalar but an S x 1 matrix for vector[1], so
-  # cmdstanr_extract() must NOT collapse the vector[1].
+  # returns a 1-D array for the scalar but an S x 1 matrix for vector[1], so
+  # cmdstanr_extract() must NOT collapse the vector[1] to the scalar shape.
   dm <- posterior::as_draws_matrix(
     matrix(rnorm(20), nrow = 10, ncol = 2, dimnames = list(NULL, c("mu", "x[1]")))
   )
   d <- posterior::as_draws_array(dm)
   ex <- cmdstanr_extract(d, c("mu", "x"))
-  expect_null(dim(ex$mu))                  # true scalar -> bare vector
+  expect_identical(dim(ex$mu), 10L)        # true scalar -> 1-D array, like rstan
   expect_length(ex$mu, 10)
   expect_identical(dim(ex$x), c(10L, 1L))  # vector[1] -> S x 1 matrix, like rstan
 })
@@ -60,4 +62,16 @@ test_that("cmdstanr_gq_matrix returns a plain draws x parameters matrix", {
   expect_false(inherits(m, "draws_matrix"))
   expect_identical(nrow(m), posterior::ndraws(d))
   expect_identical(ncol(m), 8L)
+})
+
+test_that("cmdstanr_extract handles the whole-fit parameter set", {
+  skip_if_not_installed("posterior")
+  # The pars = NULL call form resolves to every base name in the fit; check the
+  # reshaping copes with the full set (scalars and containers together).
+  d <- posterior::example_draws()
+  pars <- par_base_names(posterior::variables(d))
+  ex <- cmdstanr_extract(d, pars)
+  expect_named(ex, c("mu", "tau", "theta"))
+  expect_identical(dim(ex$mu), posterior::ndraws(d))
+  expect_identical(dim(ex$theta), c(posterior::ndraws(d), 8L))
 })
