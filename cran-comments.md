@@ -1,17 +1,40 @@
 ## Submission
 
-This is a new package. flexstanr is a portable Stan-backend layer: it gives a
-Stan-based R package one interface for fitting its models through either 'rstan'
-or, optionally, 'cmdstanr', plus backend-agnostic accessors for reading a fit.
+This is an update, 0.1.0 -> 0.2.0.
+
+flexstanr is a portable Stan-backend layer: it gives a Stan-based R package one
+interface for fitting its models through either 'rstan' or 'cmdstanr', plus
+backend-agnostic accessors for reading a fit.
+
+The main changes in this version:
+
+* Neither backend is required any more. 'rstan' moved from Imports to Suggests,
+  so flexstanr now installs and loads with neither 'rstan' nor 'cmdstanr'
+  present; selecting a backend whose package is missing fails with an
+  actionable error.
+* `backend_extract()` gained a `format` argument (`"list"`, `"draws"`,
+  `"matrix"`) and its `pars` argument now defaults to `NULL`, meaning every
+  parameter. The change is additive: `format` defaults to the shape the
+  function already returned, so existing calls are unaffected.
+* `stan_options(threading = TRUE)` adds scheduler-aware thread allocation,
+  splitting the cores the process is allowed to use between chains and
+  within-chain threads. Core detection goes through
+  `parallelly::availableCores()`, so it respects HPC scheduler allocations and
+  cgroup quotas rather than reading the machine's total core count.
+* `use_flexstanr()` now also generates the host package's re-export file, in
+  addition to editing its DESCRIPTION. New exported `test_threaded()` predicate,
+  so a host package can warn when its model cannot use the offered threads.
+
+There are no reverse dependencies on CRAN, so no reverse-dependency checks were
+required and no published package is affected by the `backend_extract()`
+signature change.
 
 ## R CMD check results
 
 0 errors | 0 warnings | 1 note
 
-The one note is the CRAN incoming-feasibility note, covering two expected
-points:
+The one note is the CRAN incoming-feasibility note:
 
-* New submission.
 * Suggests or Enhances not in mainstream repositories: cmdstanr. cmdstanr is an
   optional backend, used only through requireNamespace() guards, so the package
   installs, checks, and runs its tests without it. CmdStan's r-universe is
@@ -23,8 +46,8 @@ points:
 fit_model() and the backend_*() accessors use \dontrun because they need a host
 package's compiled Stan model and a fitted object, neither of which can be
 constructed inside the example. use_flexstanr() uses \dontrun because it edits
-the DESCRIPTION of the package it is run from. stan_options() and
-backend_has_draws() have fully runnable examples.
+the DESCRIPTION of the package it is run from. stan_options(),
+test_threaded() and backend_has_draws() have fully runnable examples.
 
 ## Test environments
 
