@@ -55,6 +55,22 @@ test_that("stan_options defaults and rejects illegal arguments", {
   expect_error(stan_options(init = 1), "init")
 })
 
+test_that("stan_options preserves arbitrary same-backend sampler arguments", {
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
+
+  rstan_opts <- stan_options(refresh = 25, algorithm = "NUTS")
+  expect_identical(rstan_opts$refresh, 25)
+  expect_identical(rstan_opts$algorithm, "NUTS")
+
+  cmdstanr_opts <- stan_options(
+    backend = "cmdstanr",
+    refresh = 50,
+    open_progress = FALSE
+  )
+  expect_identical(cmdstanr_opts$refresh, 50)
+  expect_identical(cmdstanr_opts$open_progress, FALSE)
+})
+
 test_that("stan_options surfaces the missing-backend error early", {
   local_mocked_bindings(backend_installed = function(backend) FALSE)
   expect_error(stan_options(), "requires the rstan package")

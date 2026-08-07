@@ -156,17 +156,19 @@ assert_positive_int <- function(val, name) {
 #' @title Stan Sampler Options
 #'
 #' @description
-#' Collects and validates sampler arguments for the chosen `backend`, forwarding
-#' them **verbatim** so calls feel native to that backend. Use the backend's own
-#' argument names; mixing one backend's vocabulary into the other errors with a
-#' hint. The model object is supplied separately (via [fit_model()]), while
-#' `data` and `init` are constructed internally, so none of these may be set
-#' here. `chains` defaults to `4` so downstream code can always size per-chain
-#' structures from it.
+#' Collects sampler arguments for the chosen `backend`, validating common
+#' arguments and forwarding all other same-backend arguments **verbatim** to the
+#' native sampler. The native sampler remains responsible for validating those
+#' forwarded arguments. Mixing one backend's known vocabulary into the other
+#' errors with a hint. The model object is supplied separately (via
+#' [fit_model()]), while `data` and `init` are constructed internally, so none
+#' of these may be set here. `chains` defaults to `4` so downstream code can
+#' always size per-chain structures from it.
 #'
-#' @inheritParams rstan::sampling
-#' @param ... sampler arguments forwarded verbatim to the chosen backend's
-#'   sampler. Use the backend's own names: for `"rstan"`, the
+#' @param chains number of Markov chains to run. Defaults to `4` for both
+#'   backends.
+#' @param ... arbitrary sampler arguments forwarded verbatim to the chosen
+#'   backend's sampler. Use the backend's own names: for `"rstan"`, the
 #'   [rstan::sampling()] arguments (`iter`, `cores`, `seed`); for
 #'   `"cmdstanr"`, the `$sample()` arguments (`iter_warmup`, `iter_sampling`,
 #'   `parallel_chains`, ...).
@@ -292,7 +294,9 @@ stan_options <- function(..., chains = 4L, backend = "rstan",
 #'   chain, otherwise `FALSE`.
 #'
 #' @examples
-#' test_threaded(stan_options(chains = 2))                 # FALSE (not requested)
+#' if (requireNamespace("rstan", quietly = TRUE)) {
+#'   test_threaded(stan_options(chains = 2))               # FALSE (not requested)
+#' }
 #' test_threaded(list(threads_per_chain = 4L))             # TRUE
 #'
 #' @export
