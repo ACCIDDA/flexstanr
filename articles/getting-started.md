@@ -28,8 +28,9 @@ release, pass `remote = "ACCIDDA/flexstanr"` to also record a
 ## Building sampler options
 
 [`stan_options()`](https://accidda.github.io/flexstanr/reference/stan_options.md)
-collects and validates sampler arguments for the chosen backend,
-forwarding them **verbatim** so a call feels native to that backend:
+validates common sampler arguments and forwards arbitrary same-backend
+arguments **verbatim** to that backend’s native sampler. The native
+sampler validates arguments that flexstanr does not recognize:
 
 ``` r
 
@@ -42,9 +43,13 @@ str(opts)
 #>  $ backend: chr "rstan"
 ```
 
-Each backend has its own argument vocabulary, and mixing them is caught
-early with a “did you mean” hint rather than failing deep inside the
-sampler:
+For example, backend-native controls such as rstan’s `refresh` or
+cmdstanr’s `open_progress` pass through unchanged.
+
+The model object, data, and initial values are reserved for
+[`fit_model()`](https://accidda.github.io/flexstanr/reference/fit_model.md).
+Mixing known vocabulary from the other backend is also caught early with
+a “did you mean” hint rather than failing deep inside the sampler:
 
 ``` r
 

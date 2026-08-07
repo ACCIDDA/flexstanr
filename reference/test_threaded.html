@@ -87,7 +87,9 @@ chain, otherwise <code>FALSE</code>.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">test_threaded</span><span class="op">(</span><span class="fu"><a href="stan_options.html">stan_options</a></span><span class="op">(</span>chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span>                 <span class="co"># FALSE (not requested)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"rstan"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="fu">test_threaded</span><span class="op">(</span><span class="fu"><a href="stan_options.html">stan_options</a></span><span class="op">(</span>chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span>               <span class="co"># FALSE (not requested)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
 <span class="r-in"><span><span class="fu">test_threaded</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>threads_per_chain <span class="op">=</span> <span class="fl">4L</span><span class="op">)</span><span class="op">)</span>             <span class="co"># TRUE</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>

@@ -98,9 +98,10 @@ development build off GitHub instead of the CRAN release, pass
 <div class="section level2">
 <h2 id="building-sampler-options">Building sampler options<a class="anchor" aria-label="anchor" href="#building-sampler-options"></a>
 </h2>
-<p><code><a href="../reference/stan_options.html">stan_options()</a></code> collects and validates sampler arguments
-for the chosen backend, forwarding them <strong>verbatim</strong> so a
-call feels native to that backend:</p>
+<p><code><a href="../reference/stan_options.html">stan_options()</a></code> validates common sampler arguments and
+forwards arbitrary same-backend arguments <strong>verbatim</strong> to
+that backend’s native sampler. The native sampler validates arguments
+that flexstanr does not recognize:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">opts</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/stan_options.html">stan_options</a></span><span class="op">(</span>chains <span class="op">=</span> <span class="fl">2</span>, iter <span class="op">=</span> <span class="fl">500</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">opts</span><span class="op">)</span></span>
@@ -109,9 +110,13 @@ call feels native to that backend:</p>
 <span><span class="co">#&gt;  $ seed   : int 1</span></span>
 <span><span class="co">#&gt;  $ chains : int 2</span></span>
 <span><span class="co">#&gt;  $ backend: chr "rstan"</span></span></code></pre></div>
-<p>Each backend has its own argument vocabulary, and mixing them is
-caught early with a “did you mean” hint rather than failing deep inside
-the sampler:</p>
+<p>For example, backend-native controls such as rstan’s
+<code>refresh</code> or cmdstanr’s <code>open_progress</code> pass
+through unchanged.</p>
+<p>The model object, data, and initial values are reserved for
+<code><a href="../reference/fit_model.html">fit_model()</a></code>. Mixing known vocabulary from the other backend
+is also caught early with a “did you mean” hint rather than failing deep
+inside the sampler:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># `parallel_chains` is a cmdstanr word; the rstan backend rejects it.</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="fu"><a href="../reference/stan_options.html">stan_options</a></span><span class="op">(</span>backend <span class="op">=</span> <span class="st">"rstan"</span>, parallel_chains <span class="op">=</span> <span class="fl">4</span><span class="op">)</span><span class="op">)</span></span>

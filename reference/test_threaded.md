@@ -32,7 +32,9 @@ otherwise `FALSE`.
 ## Examples
 
 ``` r
-test_threaded(stan_options(chains = 2))                 # FALSE (not requested)
+if (requireNamespace("rstan", quietly = TRUE)) {
+  test_threaded(stan_options(chains = 2))               # FALSE (not requested)
+}
 #> [1] FALSE
 test_threaded(list(threads_per_chain = 4L))             # TRUE
 #> [1] TRUE

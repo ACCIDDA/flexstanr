@@ -14,10 +14,10 @@ run time.
 ## What it provides
 
 - [`stan_options()`](https://accidda.github.io/flexstanr/reference/stan_options.md)
-  collects and validates sampler arguments for the chosen backend,
-  forwarding them **verbatim** so calls feel native. Mixing one
-  backend’s argument vocabulary into the other errors with a “did you
-  mean” hint.
+  validates common sampler arguments and forwards arbitrary same-backend
+  arguments **verbatim** to the native sampler for validation. Reserved
+  fitting inputs are rejected, as is known vocabulary from the other
+  backend (with a “did you mean” hint).
 - [`fit_model()`](https://accidda.github.io/flexstanr/reference/fit_model.md)
   dispatches the fit to the backend recorded on the options, resolving
   the compiled model by name from the calling package.

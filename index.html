@@ -73,7 +73,7 @@
 </h2>
 <ul>
 <li>
-<code><a href="reference/stan_options.html">stan_options()</a></code> collects and validates sampler arguments for the chosen backend, forwarding them <strong>verbatim</strong> so calls feel native. Mixing one backend’s argument vocabulary into the other errors with a “did you mean” hint.</li>
+<code><a href="reference/stan_options.html">stan_options()</a></code> validates common sampler arguments and forwards arbitrary same-backend arguments <strong>verbatim</strong> to the native sampler for validation. Reserved fitting inputs are rejected, as is known vocabulary from the other backend (with a “did you mean” hint).</li>
 <li>
 <code><a href="reference/fit_model.html">fit_model()</a></code> dispatches the fit to the backend recorded on the options, resolving the compiled model by name from the calling package.</li>
 <li>The fit-consumption accessors read a fit backend-agnostically: <code><a href="reference/backend_draws_array.html">backend_draws_array()</a></code>, <code><a href="reference/backend_extract.html">backend_extract()</a></code>, <code><a href="reference/backend_generate_quantities.html">backend_generate_quantities()</a></code>, and <code><a href="reference/backend_has_draws.html">backend_has_draws()</a></code>.</li>

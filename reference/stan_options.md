@@ -1,10 +1,11 @@
 # Stan Sampler Options
 
-Collects and validates sampler arguments for the chosen `backend`,
-forwarding them **verbatim** so calls feel native to that backend. Use
-the backend's own argument names; mixing one backend's vocabulary into
-the other errors with a hint. The model object is supplied separately
-(via
+Collects sampler arguments for the chosen `backend`, validating common
+arguments and forwarding all other same-backend arguments **verbatim**
+to the native sampler. The native sampler remains responsible for
+validating those forwarded arguments. Mixing one backend's known
+vocabulary into the other errors with a hint. The model object is
+supplied separately (via
 [`fit_model()`](https://accidda.github.io/flexstanr/reference/fit_model.md)),
 while `data` and `init` are constructed internally, so none of these may
 be set here. `chains` defaults to `4` so downstream code can always size
@@ -26,16 +27,15 @@ stan_options(
 
 - ...:
 
-  sampler arguments forwarded verbatim to the chosen backend's sampler.
-  Use the backend's own names: for `"rstan"`, the
+  arbitrary sampler arguments forwarded verbatim to the chosen backend's
+  sampler. Use the backend's own names: for `"rstan"`, the
   [`rstan::sampling()`](https://mc-stan.org/rstan/reference/stanmodel-method-sampling.html)
   arguments (`iter`, `cores`, `seed`); for `"cmdstanr"`, the `$sample()`
   arguments (`iter_warmup`, `iter_sampling`, `parallel_chains`, ...).
 
 - chains:
 
-  A positive integer specifying the number of Markov chains. The default
-  is 4.
+  number of Markov chains to run. Defaults to `4` for both backends.
 
 - backend:
 
