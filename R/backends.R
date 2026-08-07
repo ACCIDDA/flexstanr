@@ -567,10 +567,12 @@ cmdstanr_draws_array <- function(draws) {
 #'
 #' Groups the flat, indexed variables (`theta[1]`, `theta[2]`, ...) back into one
 #' array per parameter with draws merged across chains, matching the shape
-#' [rstan::extract()] returns: a bare vector for a scalar parameter, an
-#' `S x dims` array otherwise. Unlike rstan's default the draws are not randomly
-#' permuted; they keep iteration-chain order, which is immaterial for the
-#' exchangeable-sample uses these draws are put to.
+#' [rstan::extract()] returns: a **1-D array** of length `S` for a scalar
+#' parameter, an `S x dims` array otherwise. Unlike rstan's default the draws are
+#' not randomly permuted; they keep iteration-chain order, which is immaterial
+#' for the exchangeable-sample uses these draws are put to. Dimension *names* are
+#' not part of the shape contract (rstan labels the iteration margin, this does
+#' not); `dim()` and the class are.
 #'
 #' @param draws a posterior `draws` object for the requested parameters.
 #' @param pars the parameter base names to extract.
@@ -582,8 +584,8 @@ cmdstanr_extract <- function(draws, pars) {
   }
   # A true scalar's flat variable name is the bare `p` (no index); a length-1
   # vector/array is `p[1]`. Both give draws_of() shape S x 1, but only a true
-  # scalar should collapse to a bare vector -- rstan::extract() keeps a
-  # `vector[1]` as an S x 1 matrix -- so distinguish them by name.
+  # scalar drops its second dimension -- rstan::extract() keeps a `vector[1]` as
+  # an S x 1 matrix -- so distinguish them by name.
   flat <- posterior::variables(draws)
   rvars <- posterior::as_draws_rvars(draws)
   out <- lapply(pars, function(p) {
@@ -593,12 +595,35 @@ cmdstanr_extract <- function(draws, pars) {
     }
     a <- posterior::draws_of(rv)
     if (p %in% flat && length(dim(a)) == 2L && dim(a)[2L] == 1L) {
-      as.numeric(a)  # true scalar -> bare vector, matching rstan::extract()
+      # A true scalar becomes a 1-D array of length S, NOT a dimensionless
+      # vector: that is what rstan::extract() returns for a scalar in every call
+      # form, and callers reshape off `dim()` (aperm() outright errors on a
+      # dimensionless vector), so dropping the dim silently diverges.
+      array(as.numeric(a), dim = length(a))
     } else {
       a
     }
   })
   names(out) <- pars
+  out
+}
+
+#' Coerce a posterior draws object to a plain draws x parameters matrix
+#'
+#' Chains are stacked, so the result is a base matrix with one row per draw and
+#' one column per (flat) variable. Used for the `"matrix"` extraction format and
+#' by the cmdstanr generated-quantities path, which need the same shape.
+#'
+#' @param draws a posterior `draws` object.
+#' @returns a base matrix (rows = draws), matching the rstan path's
+#'   `as.matrix(fit)` / `as.matrix(gqs(...), pars = ...)`.
+#' @keywords internal
+plain_draws_matrix <- function(draws) {
+  if (!requireNamespace("posterior", quietly = TRUE)) {
+    stop("this operation needs the 'posterior' package.", call. = FALSE)
+  }
+  out <- unclass(posterior::as_draws_matrix(draws))
+  attr(out, "nchains") <- NULL
   out
 }
 
@@ -610,12 +635,7 @@ cmdstanr_extract <- function(draws, pars) {
 #'   `as.matrix(gqs(...), pars = ...)`.
 #' @keywords internal
 cmdstanr_gq_matrix <- function(gq_draws) {
-  if (!requireNamespace("posterior", quietly = TRUE)) {
-    stop("reading a cmdstanr fit needs the 'posterior' package.", call. = FALSE)
-  }
-  out <- unclass(posterior::as_draws_matrix(gq_draws))
-  attr(out, "nchains") <- NULL
-  out
+  plain_draws_matrix(gq_draws)
 }
 
 #' Run cmdstanr generated quantities for a host model
@@ -673,32 +693,195 @@ backend_draws_array <- function(raw_fit) {
   )
 }
 
-#' Extract named parameters from a fit as a list of arrays
+# --- extraction contract ------------------------------------------------------
+# backend_extract() is the seam every adopter reads its posterior through, so its
+# return shape is a contract, not an implementation detail: a caller that does
+# `colMeans(post$beta)` against the wrong layout gets silently wrong numbers
+# rather than an error. The formats below are therefore named explicitly, and
+# each is produced the same way for both backends. The rstan "list" path
+# delegates to rstan::extract() itself, so rstan compatibility is guaranteed by
+# construction rather than reimplemented (and re-derived wrongly).
+
+#' Parameter base names behind a set of flat draw variable names
 #'
-#' Matches the shape returned by [rstan::extract()].
+#' Stan flattens a container parameter into indexed variables (`theta[1]`,
+#' `theta[2]`, ...). This strips the index suffix to recover the base names
+#' callers use with `pars`, keeping first-appearance order.
 #'
-#' @param raw_fit a backend-native fit object (an rstan `stanfit` or a cmdstanr
-#'   `CmdStanMCMC`).
-#' @param pars character vector of parameter names to extract.
-#' @param ... forwarded to the backend's extractor.
+#' @param vars flat variable names, e.g. from [posterior::variables()].
+#' @returns unique base names, in order.
+#' @keywords internal
+par_base_names <- function(vars) {
+  unique(sub("\\[.*$", "", vars))
+}
+
+#' Assert every requested parameter is present in a fit
+#'
+#' @param vars flat variable names available in the fit.
+#' @param pars the requested parameter base names.
+#' @returns `pars`, invisibly.
+#' @keywords internal
+assert_pars_present <- function(vars, pars) {
+  absent <- setdiff(pars, par_base_names(vars))
+  if (length(absent) > 0) {
+    stop(
+      "parameter", if (length(absent) > 1L) "s" else "", " not found in the fit: ",
+      paste0("'", absent, "'", collapse = ", "), ".",
+      call. = FALSE
+    )
+  }
+  invisible(pars)
+}
+
+#' A fit's draws as a posterior draws_array, for either backend
+#'
+#' The single conversion both backends route through for the `"draws"` and
+#' `"matrix"` formats, so those two are identical across backends by
+#' construction. Draw order is preserved (iteration-chain order); neither path
+#' permutes.
+#'
+#' @param raw_fit a backend-native fit object.
+#' @param pars parameter base names to keep, or `NULL` for all.
+#' @returns a posterior `draws_array` (iteration x chain x variable).
+#' @keywords internal
+as_posterior_draws <- function(raw_fit, pars = NULL) {
+  if (!requireNamespace("posterior", quietly = TRUE)) {
+    stop(
+      "the 'draws' and 'matrix' extraction formats need the 'posterior' ",
+      "package; install it, or use format = \"list\".",
+      call. = FALSE
+    )
+  }
+  draws <- switch(
+    fit_backend(raw_fit),
+    rstan = {
+      assert_backend_available("rstan")
+      # as.array() on a stanfit is already iterations x chains x parameters,
+      # which is the layout posterior's array method expects.
+      posterior::as_draws_array(as.array(raw_fit))
+    },
+    # nocov start: needs a live cmdstanr fit + CmdStan toolchain for $draws().
+    cmdstanr = posterior::as_draws_array(raw_fit$draws())
+    # nocov end
+  )
+  if (is.null(pars)) {
+    return(draws)
+  }
+  assert_pars_present(posterior::variables(draws), pars)
+  posterior::subset_draws(draws, variable = pars)
+}
+
+#' Extract a fit into rstan::extract()'s list-of-arrays shape
+#'
+#' @inheritParams backend_extract
 #' @returns a named list of draw arrays, one per parameter.
-#'
-#' @examples
-#' \dontrun{
-#' post <- backend_extract(fit, pars = c("beta", "sigma"))
-#' }
-#'
-#' @export
-backend_extract <- function(raw_fit, pars, ...) {
+#' @keywords internal
+extract_par_list <- function(raw_fit, pars = NULL, ...) {
   switch(
     fit_backend(raw_fit),
     rstan = {
       assert_backend_available("rstan")
-      rstan::extract(raw_fit, pars = pars, ...)
+      # Delegate rather than reimplement: rstan::extract() IS the reference
+      # shape. Pass `pars` only when asked for, so pars = NULL means "all"
+      # exactly as omitting the argument does.
+      args <- list(raw_fit, ...)
+      if (!is.null(pars)) {
+        args$pars <- pars
+      }
+      do.call(rstan::extract, args)
     },
     # nocov start: needs a live cmdstanr fit + CmdStan toolchain for $draws().
-    cmdstanr = cmdstanr_extract(raw_fit$draws(variables = pars), pars)
+    cmdstanr = {
+      draws <- as_posterior_draws(raw_fit, pars)
+      if (is.null(pars)) {
+        pars <- par_base_names(posterior::variables(draws))
+      }
+      cmdstanr_extract(draws, pars)
+    }
     # nocov end
+  )
+}
+
+#' Extract parameters from a fit, in a chosen format
+#'
+#' @description
+#' The backend-agnostic way to read a fit's posterior. `format` selects the
+#' representation, and each format has the same shape whichever backend produced
+#' the fit, so downstream math does not have to branch on the backend:
+#'
+#' * `"list"` (the default) matches [rstan::extract()]: a named list with one
+#'   entry per parameter, chains merged into a single draw dimension that comes
+#'   first, a true scalar parameter collapsed to a bare length-`S` vector, and a
+#'   `vector[1]` kept as an `S x 1` matrix. The rstan backend delegates to
+#'   `rstan::extract()` itself; the cmdstanr backend reshapes its draws to match.
+#' * `"draws"` returns a [posterior::draws_array] (iteration x chain x
+#'   variable), keeping the chain structure and the flat Stan variable names.
+#' * `"matrix"` returns a plain base matrix with one row per draw (chains
+#'   stacked) and one column per flat variable, the shape
+#'   [backend_generate_quantities()] takes as `draws_mat`.
+#'
+#' `"draws"` and `"matrix"` preserve iteration-chain draw order on both
+#' backends. `"list"` does not: `rstan::extract()` permutes draws by default
+#' while the cmdstanr path does not, which is immaterial for the exchangeable
+#' -sample uses these draws are put to but means the two backends' `"list"`
+#' output agrees as a sample, not draw for draw.
+#'
+#' @param raw_fit a backend-native fit object (an rstan `stanfit` or a cmdstanr
+#'   `CmdStanMCMC`).
+#' @param pars character vector of parameter names to extract (a single name is
+#'   fine). Use the base name of a container parameter (`"theta"`, not
+#'   `"theta[1]"`). `NULL`, the default, extracts every parameter, including
+#'   `lp__`.
+#' @param format the representation to return, one of `"list"` (the default),
+#'   `"draws"`, or `"matrix"`; see Description.
+#' @param ... forwarded verbatim to the backend's own extractor, and accepted
+#'   only by `format = "list"`. Arguments that change the return shape (for
+#'   instance `rstan::extract()`'s `permuted = FALSE`) take the result outside
+#'   the contract above; prefer `format = "draws"` for a chain-preserving array.
+#' @returns the fit's draws for `pars`, in the requested `format`.
+#' @seealso [backend_draws_array()] for the raw iterations x chains x parameters
+#'   array, and [backend_generate_quantities()], whose `draws_mat` argument takes
+#'   `format = "matrix"` output.
+#'
+#' @examples
+#' \dontrun{
+#' # rstan::extract()-compatible, the shape most existing code expects
+#' post <- backend_extract(fit, pars = c("beta", "sigma"))
+#' colMeans(post$beta)
+#'
+#' # every parameter, no `pars` needed
+#' all_post <- backend_extract(fit)
+#'
+#' # backend-neutral posterior draws, chains kept
+#' draws <- backend_extract(fit, format = "draws")
+#'
+#' # a draws x parameters matrix, ready for backend_generate_quantities()
+#' mat <- backend_extract(fit, format = "matrix")
+#' }
+#'
+#' @export
+backend_extract <- function(raw_fit, pars = NULL,
+                            format = c("list", "draws", "matrix"), ...) {
+  format <- match.arg(format)
+  if (!is.null(pars) && !is.character(pars)) {
+    stop(
+      "`pars` must be a character vector of parameter names, or NULL for all.",
+      call. = FALSE
+    )
+  }
+  if (format != "list" && ...length() > 0L) {
+    stop(
+      "`...` is forwarded to the backend's own extractor, which only ",
+      "format = \"list\" uses; drop the extra argument(s), or use ",
+      "format = \"list\".",
+      call. = FALSE
+    )
+  }
+  switch(
+    format,
+    list = extract_par_list(raw_fit, pars, ...),
+    draws = as_posterior_draws(raw_fit, pars),
+    matrix = plain_draws_matrix(as_posterior_draws(raw_fit, pars))
   )
 }
 
@@ -707,9 +890,10 @@ backend_extract <- function(raw_fit, pars, ...) {
 #' @param raw_fit a backend-native fit object (an rstan `stanfit` or a cmdstanr
 #'   `CmdStanMCMC`).
 #' @param data the Stan data list for the generated-quantities run.
-#' @param draws_mat a draws matrix (rows = draws, columns = parameters). Used by
-#'   the rstan backend; the cmdstanr backend runs generated quantities against
-#'   the fit's own draws and ignores this argument.
+#' @param draws_mat a draws matrix (rows = draws, columns = parameters), as
+#'   returned by `backend_extract(raw_fit, format = "matrix")`. Used by the
+#'   rstan backend; the cmdstanr backend runs generated quantities against the
+#'   fit's own draws and ignores this argument.
 #' @param pars name of the generated parameter to return.
 #' @param model_name name of the model whose generated-quantities block to run.
 #'   Required by the cmdstanr backend, which recompiles the model to run it;
