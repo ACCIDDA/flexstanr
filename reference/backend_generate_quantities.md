@@ -28,7 +28,8 @@ backend_generate_quantities(
 
 - draws_mat:
 
-  a draws matrix (rows = draws, columns = parameters). Used by the rstan
+  a draws matrix (rows = draws, columns = parameters), as returned by
+  `backend_extract(raw_fit, format = "matrix")`. Used by the rstan
   backend; the cmdstanr backend runs generated quantities against the
   fit's own draws and ignores this argument.
 

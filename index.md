@@ -27,6 +27,12 @@ run time.
   [`backend_generate_quantities()`](https://accidda.github.io/flexstanr/reference/backend_generate_quantities.md),
   and
   [`backend_has_draws()`](https://accidda.github.io/flexstanr/reference/backend_has_draws.md).
+  `backend_extract(fit, pars, format =)` guarantees its return shape –
+  `"list"`
+  ([`rstan::extract()`](https://mc-stan.org/rstan/reference/stanfit-method-extract.html)-compatible),
+  `"draws"` (a `posterior` draws array) or `"matrix"` (draws x
+  variables) – identically for either backend, so downstream math does
+  not have to branch on the backend.
 - `stan_options(threading = TRUE)` turns on scheduler-aware threading:
   it splits the cores the process is allowed to use (via
   [`parallelly::availableCores()`](https://parallelly.futureverse.org/reference/availableCores.html),

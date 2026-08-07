@@ -4,7 +4,7 @@ pkgdown_sha: ~
 articles:
   getting-started: getting-started.html
   parallel-hpc: parallel-hpc.html
-last_built: 2026-08-07T14:34Z
+last_built: 2026-08-07T19:34Z
 urls:
   reference: https://accidda.github.io/flexstanr/reference
   article: https://accidda.github.io/flexstanr/articles

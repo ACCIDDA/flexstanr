@@ -92,9 +92,37 @@ draws <- backend_draws_array(fit)
 # named parameters, matching rstan::extract()'s shape
 post <- backend_extract(fit, pars = c("beta", "sigma"))
 
+# omit `pars` to take every parameter
+all_post <- backend_extract(fit)
+
 # guard against the degenerate "no draws" case before using a fit
 stopifnot(backend_has_draws(fit))
 ```
+
+[`backend_extract()`](https://accidda.github.io/flexstanr/reference/backend_extract.md)
+guarantees its return shape, so the same downstream math works against
+either backend. `format` picks the representation:
+
+``` r
+
+# "list" (the default): rstan::extract()'s shape -- one entry per parameter,
+# draws first, a scalar as a 1-D array of length S, a vector[2] as S x 2
+post$beta
+
+# "draws": a posterior draws array, chains kept, flat Stan variable names
+draws_arr <- backend_extract(fit, format = "draws")
+
+# "matrix": one row per draw, one column per flat variable -- what
+# backend_generate_quantities() takes as `draws_mat`
+mat <- backend_extract(fit, format = "matrix")
+gen <- backend_generate_quantities(fit, data = dat, draws_mat = mat, pars = "y_rep")
+```
+
+`"draws"` and `"matrix"` keep iteration-chain draw order on both
+backends. `"list"` does not:
+[`rstan::extract()`](https://mc-stan.org/rstan/reference/stanfit-method-extract.html)
+permutes draws by default and the cmdstanr path does not, so the two
+agree as a sample rather than draw for draw.
 
 Unrecognized objects pass through
 [`backend_has_draws()`](https://accidda.github.io/flexstanr/reference/backend_has_draws.md)

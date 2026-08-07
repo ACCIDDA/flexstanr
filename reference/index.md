@@ -33,7 +33,7 @@ Backend-agnostic accessors for a fitted model object.
   : Posterior draws of a fit as an iterations x chains x parameters
   array
 - [`backend_extract()`](https://accidda.github.io/flexstanr/reference/backend_extract.md)
-  : Extract named parameters from a fit as a list of arrays
+  : Extract parameters from a fit, in a chosen format
 - [`backend_generate_quantities()`](https://accidda.github.io/flexstanr/reference/backend_generate_quantities.md)
   : Run generated quantities against a fit and return a parameter matrix
 - [`backend_has_draws()`](https://accidda.github.io/flexstanr/reference/backend_has_draws.md)

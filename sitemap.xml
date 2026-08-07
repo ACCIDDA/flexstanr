@@ -10,8 +10,10 @@
 <url><loc>https://accidda.github.io/flexstanr/index.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/news/index.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/apply_auto_threading.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/as_posterior_draws.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/assert_backend_available.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/assert_backend_vocab.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/assert_pars_present.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/assert_positive_int.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/backend_draws_array.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/backend_extract.html</loc></url>
@@ -24,6 +26,7 @@
 <url><loc>https://accidda.github.io/flexstanr/reference/cmdstanr_extract.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/cmdstanr_gq_matrix.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/detect_cores.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/extract_par_list.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/fit_backend.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/fit_model.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/flexstanr-package.html</loc></url>
@@ -31,6 +34,8 @@
 <url><loc>https://accidda.github.io/flexstanr/reference/get_stanmodel.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/index.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/optimal_alloc.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/par_base_names.html</loc></url>
+<url><loc>https://accidda.github.io/flexstanr/reference/plain_draws_matrix.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/run_cmdstanr_gq.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/stan_options.html</loc></url>
 <url><loc>https://accidda.github.io/flexstanr/reference/test_threaded.html</loc></url>

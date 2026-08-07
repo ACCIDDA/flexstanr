@@ -74,9 +74,10 @@
 
 
 <dt id="arg-draws-mat">draws_mat<a class="anchor" aria-label="anchor" href="#arg-draws-mat"></a></dt>
-<dd><p>a draws matrix (rows = draws, columns = parameters). Used by
-the rstan backend; the cmdstanr backend runs generated quantities against
-the fit's own draws and ignores this argument.</p></dd>
+<dd><p>a draws matrix (rows = draws, columns = parameters), as
+returned by <code>backend_extract(raw_fit, format = "matrix")</code>. Used by the
+rstan backend; the cmdstanr backend runs generated quantities against the
+fit's own draws and ignores this argument.</p></dd>
 
 
 <dt id="arg-pars">pars<a class="anchor" aria-label="anchor" href="#arg-pars"></a></dt>

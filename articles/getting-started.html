@@ -152,11 +152,34 @@ your code needing to know which backend produced it:</p>
 <span><span class="co"># named parameters, matching rstan::extract()'s shape</span></span>
 <span><span class="va">post</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/backend_extract.html">backend_extract</a></span><span class="op">(</span><span class="va">fit</span>, pars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"beta"</span>, <span class="st">"sigma"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
+<span><span class="co"># omit `pars` to take every parameter</span></span>
+<span><span class="va">all_post</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/backend_extract.html">backend_extract</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span></span>
 <span><span class="co"># guard against the degenerate "no draws" case before using a fit</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="../reference/backend_has_draws.html">backend_has_draws</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="../reference/backend_extract.html">backend_extract()</a></code> guarantees its return shape, so the
+same downstream math works against either backend. <code>format</code>
+picks the representation:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># "list" (the default): rstan::extract()'s shape -- one entry per parameter,</span></span>
+<span><span class="co"># draws first, a scalar as a 1-D array of length S, a vector[2] as S x 2</span></span>
+<span><span class="va">post</span><span class="op">$</span><span class="va">beta</span></span>
+<span></span>
+<span><span class="co"># "draws": a posterior draws array, chains kept, flat Stan variable names</span></span>
+<span><span class="va">draws_arr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/backend_extract.html">backend_extract</a></span><span class="op">(</span><span class="va">fit</span>, format <span class="op">=</span> <span class="st">"draws"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># "matrix": one row per draw, one column per flat variable -- what</span></span>
+<span><span class="co"># backend_generate_quantities() takes as `draws_mat`</span></span>
+<span><span class="va">mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/backend_extract.html">backend_extract</a></span><span class="op">(</span><span class="va">fit</span>, format <span class="op">=</span> <span class="st">"matrix"</span><span class="op">)</span></span>
+<span><span class="va">gen</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/backend_generate_quantities.html">backend_generate_quantities</a></span><span class="op">(</span><span class="va">fit</span>, data <span class="op">=</span> <span class="va">dat</span>, draws_mat <span class="op">=</span> <span class="va">mat</span>, pars <span class="op">=</span> <span class="st">"y_rep"</span><span class="op">)</span></span></code></pre></div>
+<p><code>"draws"</code> and <code>"matrix"</code> keep iteration-chain
+draw order on both backends. <code>"list"</code> does not:
+<code><a href="https://mc-stan.org/rstan/reference/stanfit-method-extract.html" class="external-link">rstan::extract()</a></code> permutes draws by default and the cmdstanr
+path does not, so the two agree as a sample rather than draw for
+draw.</p>
 <p>Unrecognized objects pass through <code><a href="../reference/backend_has_draws.html">backend_has_draws()</a></code> as
 if they carry draws, so test doubles are left untouched:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/backend_has_draws.html">backend_has_draws</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
 </div>
@@ -168,7 +191,7 @@ if they carry draws, so test doubles are left untouched:</p>
 install it separately (see the cmdstanr <a href="https://mc-stan.org/cmdstanr/" class="external-link">getting-started guide</a>);
 selecting it without the package installed errors early with an
 actionable message.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">opts</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/stan_options.html">stan_options</a></span><span class="op">(</span>backend <span class="op">=</span> <span class="st">"cmdstanr"</span>, parallel_chains <span class="op">=</span> <span class="fl">4</span>, iter_warmup <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
