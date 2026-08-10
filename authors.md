@@ -14,13 +14,13 @@ Source:
 [`DESCRIPTION`](https://github.com/ACCIDDA/flexstanr/blob/main/DESCRIPTION)
 
 Pearson C, Voglesonger W (2026). *flexstanr: Portable Backend Layer for
-'Stan' Models*. R package version 0.1.0.9000,
+'Stan' Models*. R package version 0.2.0,
 <https://accidda.github.io/flexstanr/>.
 
     @Manual{,
       title = {flexstanr: Portable Backend Layer for 'Stan' Models},
       author = {Carl Pearson and Weston Voglesonger},
       year = {2026},
-      note = {R package version 0.1.0.9000},
+      note = {R package version 0.2.0},
       url = {https://accidda.github.io/flexstanr/},
     }

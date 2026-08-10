@@ -1,6 +1,6 @@
 # Changelog
 
-## flexstanr 0.2.0 (development version)
+## flexstanr 0.2.0
 
 - [`backend_extract()`](https://accidda.github.io/flexstanr/reference/backend_extract.md)
   now states its return shape as a contract rather than leaving it to
