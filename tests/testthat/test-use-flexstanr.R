@@ -138,6 +138,15 @@ test_that("flexstanr_reexport_source() carries a do-not-edit banner and the reex
   expect_match(src, "flexstanr::stan_options", fixed = TRUE)
 })
 
+test_that("every exported backend accessor is imported into generated host files", {
+  # A new backend_*() export has to be added to the internal-import list too, or
+  # a host that regenerates its setup file still can't call it unqualified.
+  accessors <- grep("^backend_", getNamespaceExports("flexstanr"), value = TRUE)
+  expect_true(all(accessors %in% .flexstanr_internal_imports))
+  src <- flexstanr_reexport_source()
+  for (fn in accessors) expect_match(src, fn, fixed = TRUE)
+})
+
 test_that("use_flexstanr() writes the generated re-export file, and reexport = FALSE skips it", {
   skip_if_not_installed("desc")
   dir <- withr::local_tempdir()

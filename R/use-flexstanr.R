@@ -8,7 +8,7 @@
 .flexstanr_reexports <- "stan_options"
 .flexstanr_internal_imports <- c(
   "fit_model", "backend_draws_array", "backend_extract",
-  "backend_generate_quantities", "backend_has_draws"
+  "backend_generate_quantities", "backend_has_draws", "backend_diagnostics"
 )
 
 # Wrap names into `#' @importFrom flexstanr a b c` lines, at most `per_line` names

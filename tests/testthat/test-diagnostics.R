@@ -178,10 +178,41 @@ test_that("backend_diagnostics rejects a non-character pars", {
 
 # --- live rstan parity ----------------------------------------------------------
 
+# --- rstan branch, without a toolchain -----------------------------------------
+
+test_that("fit_sampler_array reads post-warmup sampler params from an rstan fit", {
+  skip_if_not_installed("rstan")
+  a <- fake_sampler_array()
+  sp <- lapply(seq_len(dim(a)[2L]), function(k) a[, k, ])
+  local_mocked_bindings(
+    get_sampler_params = function(object, inc_warmup) {
+      expect_false(inc_warmup)
+      sp
+    },
+    .package = "rstan"
+  )
+  fit <- methods::new("stanfit")
+  expect_equal(unname(fit_sampler_array(fit)), unname(a))
+})
+
+test_that("fit_max_treedepth reads an rstan fit's stan_args", {
+  skip_if_not_installed("rstan")
+  fit <- methods::new(
+    "stanfit",
+    stan_args = list(list(control = list(max_treedepth = 12L)))
+  )
+  expect_identical(fit_max_treedepth(fit), 12L)
+})
+
 test_that("backend_diagnostics agrees with rstan's own reports on a live fit", {
   skip_on_cran() # compiles a Stan model
   skip_if_not_installed("rstan")
   skip_if_not_installed("posterior")
+  # compiling needs rstan's LinkingTo headers, which a binary rstan install does
+  # not pull in (CI runners have rstan without them)
+  for (pkg in c("BH", "StanHeaders", "RcppEigen", "RcppParallel")) {
+    skip_if_not_installed(pkg)
+  }
   # Neal's funnel with a low treedepth cap, so the fit has divergences and
   # treedepth hits to count rather than agreeing trivially on zeros.
   model <- rstan::stan_model(model_code = "
