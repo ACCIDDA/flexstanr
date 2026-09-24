@@ -1,6 +1,6 @@
 Package: flexstanr
 Title: Portable Backend Layer for 'Stan' Models
-Version: 0.2.0
+Version: 0.2.0.9000
 Authors@R:
     c(person("Carl", "Pearson", email = "carl.ab.pearson@gmail.com", role = c("aut", "cre"),
              comment = c(ORCID = "0000-0003-0701-7860")),
@@ -11,7 +11,8 @@ Description: Gives a 'Stan'-based R package one interface for fitting its
     validates sampler options, guarding against mixing one backend's argument
     vocabulary into the other, dispatches the fit to the chosen backend, and
     exposes backend-agnostic accessors for reading posterior draws, extracting
-    parameters, and running generated quantities. The host package supplies its
+    parameters, reporting convergence and sampler diagnostics, and running
+    generated quantities. The host package supplies its
     own compiled models; flexstanr resolves them from the calling package at run
     time, so the same code works whichever backend is installed.
 License: MIT + file LICENSE
