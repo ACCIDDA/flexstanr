@@ -35,6 +35,7 @@ reference:
   - backend_extract
   - backend_generate_quantities
   - backend_has_draws
+  - backend_diagnostics
 
 footer:
   structure:

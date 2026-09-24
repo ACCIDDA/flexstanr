@@ -1,3 +1,12 @@
+# flexstanr (development version)
+
+* New `backend_diagnostics()` reports the numbers used to judge whether a fit
+  can be trusted, in the same shape for both backends (#40): R-hat and bulk and
+  tail ESS per parameter (computed by 'posterior'), and divergent transitions,
+  max treedepth hits, and E-BFMI per chain (using rstan's and cmdstanr's own
+  definitions). It applies no thresholds and signals no warnings; deciding what
+  counts as a failed fit is left to the host package. Needs 'posterior'.
+
 # flexstanr 0.2.0
 
 * `backend_extract()` now states its return shape as a contract rather than
