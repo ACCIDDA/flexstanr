@@ -183,6 +183,7 @@ local_diagnostics_fit <- function(sampler, max_treedepth = 10L, env = parent.fra
     fit_backend = function(raw_fit) "rstan",
     backend_installed = function(backend) TRUE,
     fit_sampler_array = function(raw_fit) sampler,
+    fit_sampler_summary = function(raw_fit, sampler) list(),
     fit_max_treedepth = function(raw_fit) max_treedepth,
     .env = env
   )
@@ -224,8 +225,109 @@ test_that("backend_diagnostics restricts parameters to `pars` by base name", {
 })
 
 test_that("backend_diagnostics rejects a non-character pars", {
+  skip_if_not_installed("posterior")
   fit <- structure(list(), class = "stanfit")
   expect_error(backend_diagnostics(fit, pars = 1), "`pars` must be a character vector")
+})
+
+test_that("backend_diagnostics checks posterior before pars or the fit", {
+  diagnostics <- backend_diagnostics
+  environment(diagnostics) <- list2env(list(
+    requireNamespace = function(package, quietly) {
+      expect_identical(package, "posterior")
+      expect_true(quietly)
+      FALSE
+    }
+  ), parent = environment(backend_diagnostics))
+  expect_error(diagnostics(NULL, pars = 1), "needs the 'posterior' package")
+})
+
+test_that("cmdstanr availability is checked before touching fit methods", {
+  local_mocked_bindings(backend_installed = function(backend) FALSE)
+  fit <- structure(list(
+    metadata = function() stop("metadata must not be read"),
+    draws = function(...) stop("draws must not be read")
+  ), class = "CmdStanMCMC")
+  expect_error(fit_sampler_array(fit), "requires the cmdstanr package")
+  skip_if_not_installed("posterior")
+  expect_error(backend_diagnostics(fit), "requires the cmdstanr package")
+})
+
+test_that("diagnose_chains preserves available reference values and count types", {
+  a <- fake_sampler_array()
+  reference <- list(
+    num_divergent = c(4, 5, 6), num_max_treedepth = c(7, 8, 9),
+    ebfmi = c(0.4, 0.5, 0.6)
+  )
+  out <- diagnose_chains(a, 8L, reference = reference)
+  expect_identical(out$num_divergent, c(4L, 5L, 6L))
+  expect_identical(out$num_max_treedepth, c(7L, 8L, 9L))
+  expect_identical(out$ebfmi, reference$ebfmi)
+
+  # A backend's scalar undefined result must not erase another valid chain.
+  a[1L, 1L, "energy__"] <- NA_real_
+  expect_silent(out <- diagnose_chains(a, 8L, reference = list(ebfmi = NA)))
+  expect_identical(out$ebfmi[1L], NA_real_)
+  expect_equal(out$ebfmi[-1L], diagnose_chains(a, 8L)$ebfmi[-1L])
+})
+
+test_that("cmdstanr public summaries are requested quietly and passed through", {
+  a <- fake_sampler_array()
+  calls <- 0L
+  reference <- list(
+    num_divergent = c(4, 5, 6), num_max_treedepth = c(7, 8, 9),
+    ebfmi = c(0.4, 0.5, 0.6)
+  )
+  fit <- structure(list(diagnostic_summary = function(diagnostics, quiet) {
+    calls <<- calls + 1L
+    expect_identical(diagnostics, c("divergences", "treedepth", "ebfmi"))
+    expect_true(quiet)
+    warning("backend warning must remain silent")
+    reference
+  }), class = "CmdStanMCMC")
+  expect_silent(summary <- fit_sampler_summary(fit, a))
+  expect_identical(calls, 1L)
+  expect_identical(summary, reference)
+  expect_identical(diagnose_chains(a, 8L, summary)$ebfmi, reference$ebfmi)
+})
+
+test_that("cmdstanr summary selection handles absent and undefined diagnostics", {
+  a <- fake_sampler_array(iter = 4L, chains = 2L)
+  fit <- structure(list(diagnostic_summary = function(diagnostics, quiet) {
+    expect_identical(diagnostics, c("divergences", "treedepth"))
+    expect_true(quiet)
+    list(num_divergent = c(0, 1), num_max_treedepth = c(1L, 2L))
+  }), class = "CmdStanMCMC")
+  for (energy in list(
+    rep(5, 4L), c(1, 2, 3, NA_real_), c(1, 2, 3, NaN),
+    c(1, 2, 3, Inf), c(-1e308, 0, 1e308, 0)
+  )) {
+    a[, 1L, "energy__"] <- energy
+    expect_silent(reference <- fit_sampler_summary(fit, a))
+    expect_silent(out <- diagnose_chains(a, 8L, reference))
+    expect_identical(out$ebfmi[1L], NA_real_)
+    expect_equal(out$ebfmi[2L], chain_ebfmi(a[, 2L, "energy__"]))
+  }
+  expect_silent(reference <- fit_sampler_summary(fit, a[1L, , , drop = FALSE]))
+  expect_true(all(is.na(diagnose_chains(a[1L, , , drop = FALSE], 8L, reference)$ebfmi)))
+
+  fit$diagnostic_summary <- function(diagnostics, quiet) {
+    expect_identical(diagnostics, "divergences")
+    list(num_divergent = c(0, 1))
+  }
+  partial <- a[, , "divergent__", drop = FALSE]
+  out <- diagnose_chains(partial, 8L, fit_sampler_summary(fit, partial))
+  expect_identical(out$num_divergent, c(0L, 1L))
+  expect_true(all(is.na(out$num_max_treedepth)))
+  expect_true(all(is.na(out$ebfmi)))
+
+  fit$diagnostic_summary <- function(...) stop("summary must not be read")
+  expect_identical(fit_sampler_summary(fit, a[, , "accept_stat__", drop = FALSE]), list())
+})
+
+test_that("old cmdstanr fits receive an actionable summary upgrade error", {
+  fit <- structure(list(), class = "CmdStanMCMC")
+  expect_error(fit_sampler_summary(fit, fake_sampler_array()), "cmdstanr >= 0.5.0")
 })
 
 # Exercise the public CmdStanMCMC accessors, including their global-format
@@ -251,6 +353,15 @@ fake_cmdstan_diagnostics_fit <- function(draws, sampler, fixed_param = FALSE) {
       if (fixed_param) stop("There are no sampler diagnostics when fixed_param = TRUE.")
       convert(sampler, format)
     },
+    diagnostic_summary = function(diagnostics, quiet) {
+      expect_true(quiet)
+      if (fixed_param) stop("Fixed-parameter fits have no sampler summary.")
+      out <- diagnose_chains(sampler, max_treedepth = 8L)
+      columns <- c(
+        divergences = "num_divergent", treedepth = "num_max_treedepth", ebfmi = "ebfmi"
+      )
+      as.list(out[unname(columns[diagnostics])])
+    },
     metadata = function() {
       if (fixed_param) list(algorithm = "fixed_param") else list(max_treedepth = 8L)
     }
@@ -259,6 +370,7 @@ fake_cmdstan_diagnostics_fit <- function(draws, sampler, fixed_param = FALSE) {
 
 test_that("backend_diagnostics handles cmdstanr fixed_param fits", {
   skip_if_not_installed("posterior")
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
   for (n_iter in c(1L, 20L)) {
     for (n_chains in c(1L, 2L)) {
       draws <- posterior::as_draws_array(array(
@@ -281,6 +393,7 @@ test_that("backend_diagnostics handles cmdstanr fixed_param fits", {
 
 test_that("cmdstanr diagnostics are independent of the global draws format", {
   skip_if_not_installed("posterior")
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
   draws <- posterior::example_draws()
   sampler <- fake_sampler_array(
     iter = posterior::niterations(draws), chains = posterior::nchains(draws)
@@ -297,6 +410,7 @@ test_that("cmdstanr diagnostics are independent of the global draws format", {
 
 test_that("cmdstanr sampler errors are not mistaken for fixed_param fits", {
   skip_if_not_installed("posterior")
+  local_mocked_bindings(backend_installed = function(backend) TRUE)
   fit <- fake_cmdstan_diagnostics_fit(posterior::example_draws(), NULL)
   fit$sampler_diagnostics <- function(...) stop("sampler output unavailable")
   expect_error(backend_diagnostics(fit), "sampler output unavailable")

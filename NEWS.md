@@ -11,6 +11,10 @@
   Posterior ESS warnings are suppressed to honor the reporting-only contract;
   undefined E-BFMI values are consistently `NA`, with the backend formula
   clarified in the documentation.
+* Sampler diagnostics now delegate to cmdstanr's public `diagnostic_summary()`
+  (cmdstanr >= 0.5.0) and rstan's `get_bfmi()`, with narrow adapters for per-chain
+  rstan counts and undefined energy. Backend availability is checked before
+  reading a fit, and the posterior dependency is checked before `pars`.
 
 # flexstanr 0.2.0
 
