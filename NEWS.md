@@ -6,6 +6,11 @@
   max treedepth hits, and E-BFMI per chain (using rstan's and cmdstanr's own
   definitions). It applies no thresholds and signals no warnings; deciding what
   counts as a failed fit is left to the host package. Needs 'posterior'.
+* Diagnostics handle cmdstanr fixed-parameter fits and non-default draws
+  formats, and preserve rstan's sampler dimensions for singleton draws.
+  Posterior ESS warnings are suppressed to honor the reporting-only contract;
+  undefined E-BFMI values are consistently `NA`, with the backend formula
+  clarified in the documentation.
 
 # flexstanr 0.2.0
 

@@ -46,6 +46,23 @@ test_that("diagnose_parameters reports rhat and bulk/tail ESS per variable", {
   expect_equal(out$ess_tail[out$variable == "mu"], posterior::ess_tail(mu))
 })
 
+test_that("diagnose_parameters reports capped ESS without warnings", {
+  skip_if_not_installed("posterior")
+  # Strongly antithetic draws make posterior cap its ESS estimate and warn.
+  withr::local_seed(123)
+  d <- posterior::as_draws_array(array(
+    replicate(4L, as.numeric(stats::arima.sim(list(ar = -0.9), 100L))),
+    dim = c(100L, 4L, 1L),
+    dimnames = list(NULL, NULL, "theta")
+  ))
+  expected <- suppressWarnings(posterior::summarise_draws(
+    d, rhat = posterior::rhat,
+    ess_bulk = posterior::ess_bulk, ess_tail = posterior::ess_tail
+  ))
+  expect_silent(out <- diagnose_parameters(d))
+  for (column in names(out)) expect_equal(out[[column]], expected[[column]])
+})
+
 # --- per-chain sampler diagnostics --------------------------------------------
 
 test_that("diagnose_chains counts divergences and treedepth hits per chain", {
@@ -95,6 +112,18 @@ test_that("diagnose_chains gives NA E-BFMI when it is undefined", {
   expect_false(anyNA(diagnose_chains(a, 10L)$ebfmi[-1L]))
 })
 
+test_that("chain_ebfmi gives NA for constant or non-finite energy", {
+  for (energy in list(
+    rep(5, 4L), c(1, 2, NA_real_), c(1, 2, NaN),
+    c(1, 2, Inf), c(1, 2, -Inf), c(-1e308, 0, 1e308),
+    c(0, 1e154, 0, 1e154)
+  )) {
+    expect_identical(chain_ebfmi(energy), NA_real_)
+  }
+  # Match the backends' sum / N numerator, not mean(diff(energy)^2).
+  expect_equal(chain_ebfmi(c(1, 2, 3)), 2 / 3)
+})
+
 test_that("diagnose_chains reports NA for a column the sampler did not write", {
   # e.g. algorithm = "Fixed_param", which writes no NUTS sampler columns
   a <- fake_sampler_array()
@@ -116,6 +145,29 @@ test_that("rstan_sampler_array stacks get_sampler_params() output by chain", {
   expect_identical(dim(out), dim(a))
   expect_identical(dimnames(out)$variable, dimnames(a)$variable)
   expect_equal(unname(out), unname(a))
+})
+
+test_that("rstan_sampler_array preserves singleton and empty dimensions", {
+  for (n_iter in c(1L, 2L, 0L)) {
+    for (n_vars in c(1L, 2L, 0L)) {
+      for (n_chains in c(1L, 2L)) {
+        vars <- c("accept_stat__", "energy__")[seq_len(n_vars)]
+        sp <- lapply(seq_len(n_chains), function(k) {
+          matrix(
+            seq_len(n_iter * n_vars) + k,
+            nrow = n_iter, ncol = n_vars,
+            dimnames = list(NULL, vars)
+          )
+        })
+        out <- rstan_sampler_array(sp)
+        expect_identical(dim(out), c(n_iter, n_chains, n_vars))
+        expect_equal(dimnames(out)[[3L]], colnames(sp[[1L]]))
+        for (k in seq_len(n_chains)) {
+          expect_equal(as.numeric(out[, k, , drop = FALSE]), as.numeric(sp[[k]]))
+        }
+      }
+    }
+  }
 })
 
 test_that("rstan_max_treedepth reads control$max_treedepth, defaulting to 10", {
@@ -174,6 +226,80 @@ test_that("backend_diagnostics restricts parameters to `pars` by base name", {
 test_that("backend_diagnostics rejects a non-character pars", {
   fit <- structure(list(), class = "stanfit")
   expect_error(backend_diagnostics(fit, pars = 1), "`pars` must be a character vector")
+})
+
+# Exercise the public CmdStanMCMC accessors, including their global-format
+# default and the fixed_param error, without compiling a Stan model.
+fake_cmdstan_diagnostics_fit <- function(draws, sampler, fixed_param = FALSE) {
+  convert <- function(x, format) {
+    switch(format,
+      draws_array = posterior::as_draws_array(x),
+      draws_df = posterior::as_draws_df(x),
+      draws_matrix = posterior::as_draws_matrix(x),
+      draws_list = posterior::as_draws_list(x)
+    )
+  }
+  structure(list(
+    draws = function(format = getOption("cmdstanr_draws_format", "draws_array")) {
+      convert(draws, format)
+    },
+    sampler_diagnostics = function(
+      inc_warmup = FALSE,
+      format = getOption("cmdstanr_draws_format", "draws_array")
+    ) {
+      expect_false(inc_warmup)
+      if (fixed_param) stop("There are no sampler diagnostics when fixed_param = TRUE.")
+      convert(sampler, format)
+    },
+    metadata = function() {
+      if (fixed_param) list(algorithm = "fixed_param") else list(max_treedepth = 8L)
+    }
+  ), class = "CmdStanMCMC")
+}
+
+test_that("backend_diagnostics handles cmdstanr fixed_param fits", {
+  skip_if_not_installed("posterior")
+  for (n_iter in c(1L, 20L)) {
+    for (n_chains in c(1L, 2L)) {
+      draws <- posterior::as_draws_array(array(
+        seq_len(n_iter * n_chains), dim = c(n_iter, n_chains, 1L),
+        dimnames = list(NULL, NULL, "theta")
+      ))
+      fit <- fake_cmdstan_diagnostics_fit(draws, NULL, fixed_param = TRUE)
+      expect_silent(out <- backend_diagnostics(fit, pars = "theta"))
+      expect_identical(out$n_iter, n_iter)
+      expect_identical(out$n_chains, n_chains)
+      expect_identical(out$max_treedepth, NA_integer_)
+      expect_identical(out$parameters$variable, "theta")
+      expect_identical(out$chains$chain, seq_len(n_chains))
+      expect_identical(out$chains$num_divergent, rep(NA_integer_, n_chains))
+      expect_identical(out$chains$num_max_treedepth, rep(NA_integer_, n_chains))
+      expect_identical(out$chains$ebfmi, rep(NA_real_, n_chains))
+    }
+  }
+})
+
+test_that("cmdstanr diagnostics are independent of the global draws format", {
+  skip_if_not_installed("posterior")
+  draws <- posterior::example_draws()
+  sampler <- fake_sampler_array(
+    iter = posterior::niterations(draws), chains = posterior::nchains(draws)
+  )
+  fit <- fake_cmdstan_diagnostics_fit(draws, sampler)
+  withr::local_options(cmdstanr_draws_format = "draws_array")
+  expected <- backend_diagnostics(fit)
+  for (format in c("draws_df", "draws_matrix", "draws_list")) {
+    withr::local_options(cmdstanr_draws_format = format)
+    expect_silent(out <- backend_diagnostics(fit))
+    expect_equal(out, expected)
+  }
+})
+
+test_that("cmdstanr sampler errors are not mistaken for fixed_param fits", {
+  skip_if_not_installed("posterior")
+  fit <- fake_cmdstan_diagnostics_fit(posterior::example_draws(), NULL)
+  fit$sampler_diagnostics <- function(...) stop("sampler output unavailable")
+  expect_error(backend_diagnostics(fit), "sampler output unavailable")
 })
 
 # --- live rstan parity ----------------------------------------------------------
@@ -242,4 +368,17 @@ test_that("backend_diagnostics agrees with rstan's own reports on a live fit", {
   rhat_y <- out$parameters$rhat[out$parameters$variable == "y"]
   expect_equal(rhat_y, posterior::rhat(y))
   expect_equal(rhat_y, rstan::Rhat(y), tolerance = 1e-3)
+
+  # Fixed_param writes just accept_stat__; a single retained draw must still
+  # survive normalization as an iterations x chains x variables array.
+  fixed <- rstan::sampling(
+    model, algorithm = "Fixed_param", chains = 1L, iter = 1L, warmup = 0L,
+    seed = 1L, refresh = 0L
+  )
+  expect_silent(fixed_out <- backend_diagnostics(fixed))
+  expect_identical(fixed_out$n_iter, 1L)
+  expect_identical(fixed_out$n_chains, 1L)
+  expect_identical(fixed_out$chains$num_divergent, NA_integer_)
+  expect_identical(fixed_out$chains$num_max_treedepth, NA_integer_)
+  expect_identical(fixed_out$chains$ebfmi, NA_real_)
 })

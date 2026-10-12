@@ -9,7 +9,7 @@
 # iterations x chains x variables array of post-warmup sampler parameters for
 # the per-chain ones. The formulas are the ones rstan and cmdstanr themselves
 # use (a transition at the treedepth cap counts as a hit; E-BFMI is
-# mean(diff(energy)^2) / var(energy) per chain), so results agree with each
+# sum(diff(energy)^2) / (length(energy) * var(energy)) per chain), so results agree with each
 # backend's own reports by construction.
 
 #' Per-parameter convergence summaries
@@ -19,12 +19,14 @@
 #'   `variable`, `rhat`, `ess_bulk`, and `ess_tail`.
 #' @keywords internal
 diagnose_parameters <- function(draws) {
-  s <- posterior::summarise_draws(
+  # posterior warns when it caps an unstable ESS estimate. Keep its reported
+  # value, but leave all judgments and warnings to the caller of this API.
+  s <- suppressWarnings(posterior::summarise_draws(
     draws,
     rhat = posterior::rhat,
     ess_bulk = posterior::ess_bulk,
     ess_tail = posterior::ess_tail
-  )
+  ))
   data.frame(
     variable = s$variable,
     rhat = s$rhat,
@@ -37,13 +39,18 @@ diagnose_parameters <- function(draws) {
 #'
 #' @param energy numeric vector of `energy__` values for one chain.
 #' @returns a numeric scalar, or `NA` when undefined (fewer than three
-#'   iterations, or any missing energy).
+#'   iterations, non-finite energy, zero variance, or numerical overflow).
 #' @keywords internal
 chain_ebfmi <- function(energy) {
-  if (length(energy) < 3L || anyNA(energy)) {
+  if (length(energy) < 3L || any(!is.finite(energy))) {
     return(NA_real_)
   }
-  (sum(diff(energy)^2) / length(energy)) / stats::var(energy)
+  variance <- stats::var(energy)
+  if (!is.finite(variance) || variance <= 0) {
+    return(NA_real_)
+  }
+  ebfmi <- (sum(diff(energy)^2) / length(energy)) / variance
+  if (is.finite(ebfmi)) ebfmi else NA_real_
 }
 
 #' Per-chain sampler diagnostics
@@ -93,7 +100,12 @@ diagnose_chains <- function(sampler, max_treedepth) {
 #' @returns a plain iterations x chains x variables array.
 #' @keywords internal
 rstan_sampler_array <- function(sp) {
-  out <- aperm(simplify2array(sp, higher = TRUE), c(1L, 3L, 2L))
+  # simplify2array() drops dimensions for length-one (or empty) matrices.
+  # Declare all three dimensions before moving chains to the second margin.
+  out <- aperm(array(
+    unlist(sp, use.names = FALSE),
+    dim = c(dim(sp[[1L]]), length(sp))
+  ), c(1L, 3L, 2L))
   dimnames(out) <- list(iteration = NULL, chain = NULL, variable = colnames(sp[[1L]]))
   out
 }
@@ -111,7 +123,8 @@ rstan_max_treedepth <- function(stan_args) {
 #' A fit's post-warmup sampler parameters, for either backend
 #'
 #' @param raw_fit a backend-native fit object.
-#' @returns a plain iterations x chains x variables array.
+#' @returns a plain iterations x chains x variables array, or `NULL` for
+#'   cmdstanr fixed-parameter fits, which do not expose sampler diagnostics.
 #' @keywords internal
 fit_sampler_array <- function(raw_fit) {
   switch(
@@ -120,24 +133,34 @@ fit_sampler_array <- function(raw_fit) {
       assert_backend_available("rstan")
       rstan_sampler_array(rstan::get_sampler_params(raw_fit, inc_warmup = FALSE))
     },
-    # nocov start: needs a live cmdstanr fit + CmdStan toolchain.
-    cmdstanr = cmdstanr_draws_array(raw_fit$sampler_diagnostics(inc_warmup = FALSE))
-    # nocov end
+    cmdstanr = {
+      if (isTRUE(raw_fit$metadata()$algorithm == "fixed_param")) {
+        return(NULL)
+      }
+      cmdstanr_draws_array(raw_fit$sampler_diagnostics(
+        inc_warmup = FALSE, format = "draws_array"
+      ))
+    }
   )
 }
 
 #' The maximum tree depth a fit ran with, for either backend
 #'
 #' @param raw_fit a backend-native fit object.
-#' @returns an integer scalar.
+#' @returns an integer scalar, or `NA` when no tree depth setting applies.
 #' @keywords internal
 fit_max_treedepth <- function(raw_fit) {
   switch(
     fit_backend(raw_fit),
     rstan = rstan_max_treedepth(raw_fit@stan_args[[1L]]),
-    # nocov start: needs a live cmdstanr fit + CmdStan toolchain.
-    cmdstanr = as.integer(raw_fit$metadata()$max_treedepth)
-    # nocov end
+    cmdstanr = {
+      metadata <- raw_fit$metadata()
+      if (isTRUE(metadata$algorithm == "fixed_param") || is.null(metadata$max_treedepth)) {
+        NA_integer_
+      } else {
+        as.integer(metadata$max_treedepth)
+      }
+    }
   )
 }
 
@@ -155,7 +178,8 @@ fit_max_treedepth <- function(raw_fit) {
 #' R-hat and ESS are computed by the 'posterior' package on both backends. The
 #' per-chain sampler diagnostics use the same definitions as rstan and cmdstanr:
 #' a post-warmup transition whose tree depth reaches `max_treedepth` counts as a
-#' hit, and E-BFMI is `mean(diff(energy)^2) / var(energy)` for each chain.
+#' hit, and E-BFMI is `sum(diff(energy)^2) / (N * var(energy))` for each chain,
+#' where `N` is its number of post-warmup iterations.
 #'
 #' @param raw_fit a backend-native fit object (an rstan `stanfit` or a cmdstanr
 #'   `CmdStanMCMC`).
@@ -172,10 +196,12 @@ fit_max_treedepth <- function(raw_fit) {
 #'     `num_divergent`, `num_max_treedepth`, and `ebfmi` (all post-warmup). A
 #'     column is `NA` when the sampler did not record it (e.g.
 #'     `algorithm = "Fixed_param"`); `ebfmi` is also `NA` for chains shorter than
-#'     three iterations.
+#'     three iterations, non-finite energy, zero energy variance, or numerical
+#'     overflow.
 #'   * `n_chains`: the number of chains.
 #'   * `n_iter`: the number of post-warmup iterations per chain.
-#'   * `max_treedepth`: the maximum tree depth setting the fit ran with.
+#'   * `max_treedepth`: the maximum tree depth setting the fit ran with, or `NA`
+#'     when unavailable (e.g. a cmdstanr fixed-parameter fit).
 #' @seealso [backend_has_draws()] for the earlier check that a fit produced any
 #'   draws at all.
 #'
@@ -202,9 +228,15 @@ backend_diagnostics <- function(raw_fit, pars = NULL) {
   }
   draws <- as_posterior_draws(raw_fit, pars)
   max_treedepth <- fit_max_treedepth(raw_fit)
+  sampler <- fit_sampler_array(raw_fit)
+  if (is.null(sampler)) {
+    sampler <- array(
+      numeric(), dim = c(posterior::niterations(draws), posterior::nchains(draws), 0L)
+    )
+  }
   list(
     parameters = diagnose_parameters(draws),
-    chains = diagnose_chains(fit_sampler_array(raw_fit), max_treedepth),
+    chains = diagnose_chains(sampler, max_treedepth),
     n_chains = posterior::nchains(draws),
     n_iter = posterior::niterations(draws),
     max_treedepth = max_treedepth
