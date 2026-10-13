@@ -22,7 +22,9 @@ models, and flexstanr resolves them from the calling package at run time.
   resolving the compiled model by name from the calling package.
 - The fit-consumption accessors read a fit backend-agnostically:
   `backend_draws_array()`, `backend_extract()`, `backend_generate_quantities()`,
-  and `backend_has_draws()`. `backend_extract(fit, pars, format =)` guarantees
+  `backend_has_draws()`, and `backend_diagnostics()` (R-hat, ESS, divergences,
+  treedepth hits, and E-BFMI, reported without thresholds).
+  `backend_extract(fit, pars, format =)` guarantees
   its return shape -- `"list"` (`rstan::extract()`-compatible), `"draws"` (a
   `posterior` draws array) or `"matrix"` (draws x variables) -- identically for
   either backend, so downstream math does not have to branch on the backend.
