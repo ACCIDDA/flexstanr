@@ -25,10 +25,12 @@ run time.
   [`backend_draws_array()`](https://accidda.github.io/flexstanr/reference/backend_draws_array.md),
   [`backend_extract()`](https://accidda.github.io/flexstanr/reference/backend_extract.md),
   [`backend_generate_quantities()`](https://accidda.github.io/flexstanr/reference/backend_generate_quantities.md),
+  [`backend_has_draws()`](https://accidda.github.io/flexstanr/reference/backend_has_draws.md),
   and
-  [`backend_has_draws()`](https://accidda.github.io/flexstanr/reference/backend_has_draws.md).
-  `backend_extract(fit, pars, format =)` guarantees its return shape –
-  `"list"`
+  [`backend_diagnostics()`](https://accidda.github.io/flexstanr/reference/backend_diagnostics.md)
+  (R-hat, ESS, divergences, treedepth hits, and E-BFMI, reported without
+  thresholds). `backend_extract(fit, pars, format =)` guarantees its
+  return shape – `"list"`
   ([`rstan::extract()`](https://mc-stan.org/rstan/reference/stanfit-method-extract.html)-compatible),
   `"draws"` (a `posterior` draws array) or `"matrix"` (draws x
   variables) – identically for either backend, so downstream math does

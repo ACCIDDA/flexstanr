@@ -6,10 +6,10 @@ install this package (install whichever you use). Collects and validates
 sampler options, guarding against mixing one backend's argument
 vocabulary into the other, dispatches the fit to the chosen backend, and
 exposes backend-agnostic accessors for reading posterior draws,
-extracting parameters, and running generated quantities. The host
-package supplies its own compiled models; flexstanr resolves them from
-the calling package at run time, so the same code works whichever
-backend is installed.
+extracting parameters, reporting convergence and sampler diagnostics,
+and running generated quantities. The host package supplies its own
+compiled models; flexstanr resolves them from the calling package at run
+time, so the same code works whichever backend is installed.
 
 ## See also
 

@@ -1,6 +1,31 @@
 # Changelog
 
+## flexstanr (development version)
+
+- New
+  [`backend_diagnostics()`](https://accidda.github.io/flexstanr/reference/backend_diagnostics.md)
+  reports the numbers used to judge whether a fit can be trusted, in the
+  same shape for both backends
+  ([\#40](https://github.com/ACCIDDA/flexstanr/issues/40)): R-hat and
+  bulk and tail ESS per parameter (computed by ‘posterior’), and
+  divergent transitions, max treedepth hits, and E-BFMI per chain (using
+  rstan’s and cmdstanr’s own definitions). It applies no thresholds and
+  signals no warnings; deciding what counts as a failed fit is left to
+  the host package. Needs ‘posterior’.
+- Diagnostics handle cmdstanr fixed-parameter fits and non-default draws
+  formats, and preserve rstan’s sampler dimensions for singleton draws.
+  Posterior ESS warnings are suppressed to honor the reporting-only
+  contract; undefined E-BFMI values are consistently `NA`, with the
+  backend formula clarified in the documentation.
+- Sampler diagnostics now delegate to cmdstanr’s public
+  `diagnostic_summary()` (cmdstanr \>= 0.5.0) and rstan’s `get_bfmi()`,
+  with narrow adapters for per-chain rstan counts and undefined energy.
+  Backend availability is checked before reading a fit, and the
+  posterior dependency is checked before `pars`.
+
 ## flexstanr 0.2.0
+
+CRAN release: 2026-08-25
 
 - [`backend_extract()`](https://accidda.github.io/flexstanr/reference/backend_extract.md)
   now states its return shape as a contract rather than leaving it to

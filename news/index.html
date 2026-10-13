@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">flexstanr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,7 +44,13 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.2.0" id="flexstanr-020">flexstanr 0.2.0<a class="anchor" aria-label="anchor" href="#flexstanr-020"></a></h2>
+<h2 class="pkg-version" data-toc-text="development version" id="flexstanr-development-version">flexstanr (development version)<a class="anchor" aria-label="anchor" href="#flexstanr-development-version"></a></h2>
+<ul><li>New <code><a href="../reference/backend_diagnostics.html">backend_diagnostics()</a></code> reports the numbers used to judge whether a fit can be trusted, in the same shape for both backends (<a href="https://github.com/ACCIDDA/flexstanr/issues/40" class="external-link">#40</a>): R-hat and bulk and tail ESS per parameter (computed by ‘posterior’), and divergent transitions, max treedepth hits, and E-BFMI per chain (using rstan’s and cmdstanr’s own definitions). It applies no thresholds and signals no warnings; deciding what counts as a failed fit is left to the host package. Needs ‘posterior’.</li>
+<li>Diagnostics handle cmdstanr fixed-parameter fits and non-default draws formats, and preserve rstan’s sampler dimensions for singleton draws. Posterior ESS warnings are suppressed to honor the reporting-only contract; undefined E-BFMI values are consistently <code>NA</code>, with the backend formula clarified in the documentation.</li>
+<li>Sampler diagnostics now delegate to cmdstanr’s public <code>diagnostic_summary()</code> (cmdstanr &gt;= 0.5.0) and rstan’s <code>get_bfmi()</code>, with narrow adapters for per-chain rstan counts and undefined energy. Backend availability is checked before reading a fit, and the posterior dependency is checked before <code>pars</code>.</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0" id="flexstanr-020">flexstanr 0.2.0<a class="anchor" aria-label="anchor" href="#flexstanr-020"></a></h2><p class="text-muted">CRAN release: 2026-08-25</p>
 <ul><li>
 <code><a href="../reference/backend_extract.html">backend_extract()</a></code> now states its return shape as a contract rather than leaving it to the backend (<a href="https://github.com/ACCIDDA/flexstanr/issues/34" class="external-link">#34</a>). <code>pars</code> defaults to <code>NULL</code>, which extracts every parameter, and a new <code>format</code> argument picks the representation: <code>"list"</code> (the default) is <code><a href="https://mc-stan.org/rstan/reference/stanfit-method-extract.html" class="external-link">rstan::extract()</a></code>-compatible, <code>"draws"</code> returns a <code>posterior</code> draws array with the chain structure intact, and <code>"matrix"</code> returns a plain draws x variables matrix – the shape <code><a href="../reference/backend_generate_quantities.html">backend_generate_quantities()</a></code> takes as <code>draws_mat</code>. Each format has the same shape whichever backend produced the fit, so downstream code no longer has to branch on the backend. Existing calls are unaffected: <code>format</code> defaults to the shape <code><a href="../reference/backend_extract.html">backend_extract()</a></code> already returned.</li>
 <li>Bug fix: the cmdstanr backend returned a scalar parameter as a dimensionless vector, while <code><a href="https://mc-stan.org/rstan/reference/stanfit-method-extract.html" class="external-link">rstan::extract()</a></code> returns a 1-D array of length <code>S</code> for a scalar in every call form. Code that reshapes off <code><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim()</a></code> (<code><a href="https://rdrr.io/r/base/aperm.html" class="external-link">aperm()</a></code> errors outright on a dimensionless vector) therefore behaved differently depending on which backend produced the fit. The cmdstanr path now matches rstan. A <code>vector[1]</code> is still kept as an <code>S x 1</code> matrix on both backends, as rstan does.</li>

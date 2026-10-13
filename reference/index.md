@@ -38,3 +38,5 @@ Backend-agnostic accessors for a fitted model object.
   : Run generated quantities against a fit and return a parameter matrix
 - [`backend_has_draws()`](https://accidda.github.io/flexstanr/reference/backend_has_draws.md)
   : Does a fit object carry usable posterior draws?
+- [`backend_diagnostics()`](https://accidda.github.io/flexstanr/reference/backend_diagnostics.md)
+  : Convergence and sampler diagnostics for a fit
