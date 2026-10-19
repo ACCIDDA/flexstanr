@@ -1,20 +1,23 @@
-# flexstanr (development version)
+# flexstanr 0.3.0
 
 * New `backend_diagnostics()` reports the numbers used to judge whether a fit
-  can be trusted, in the same shape for both backends (#40): R-hat and bulk and
-  tail ESS per parameter (computed by 'posterior'), and divergent transitions,
-  max treedepth hits, and E-BFMI per chain (using rstan's and cmdstanr's own
-  definitions). It applies no thresholds and signals no warnings; deciding what
-  counts as a failed fit is left to the host package. Needs 'posterior'.
-* Diagnostics handle cmdstanr fixed-parameter fits and non-default draws
-  formats, and preserve rstan's sampler dimensions for singleton draws.
-  Posterior ESS warnings are suppressed to honor the reporting-only contract;
-  undefined E-BFMI values are consistently `NA`, with the backend formula
-  clarified in the documentation.
-* Sampler diagnostics now delegate to cmdstanr's public `diagnostic_summary()`
-  (cmdstanr >= 0.5.0) and rstan's `get_bfmi()`, with narrow adapters for per-chain
-  rstan counts and undefined energy. Backend availability is checked before
-  reading a fit, and the posterior dependency is checked before `pars`.
+  can be trusted, in the same shape for both backends (#40, #41): R-hat and
+  bulk and tail ESS per parameter (computed by 'posterior'), and divergent
+  transitions, max treedepth hits, and E-BFMI per chain (all post-warmup), plus
+  the number of chains, post-warmup iterations, and the `max_treedepth` setting.
+  It applies no thresholds and signals no warnings (posterior's ESS warnings are
+  suppressed); deciding what counts as a failed fit is left to the host
+  package. It needs the suggested 'posterior' package and errors with an
+  install hint when it is missing.
+* Sampler diagnostics delegate to cmdstanr's public `diagnostic_summary()` and
+  rstan's `get_bfmi()`, with narrow adapters for per-chain rstan counts and
+  undefined energy. Undefined E-BFMI values are consistently `NA`, and
+  cmdstanr fixed-parameter fits report `NA` for the sampler columns and
+  `max_treedepth`.
+* The suggested cmdstanr backend now requires cmdstanr >= 0.5.0 (for
+  `diagnostic_summary()`).
+* `use_flexstanr()` adds `backend_diagnostics` to the host package's generated
+  `@importFrom flexstanr` list, alongside the other `backend_*()` accessors.
 
 # flexstanr 0.2.0
 
