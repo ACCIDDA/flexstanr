@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">flexstanr</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,10 +44,12 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="flexstanr-development-version">flexstanr (development version)<a class="anchor" aria-label="anchor" href="#flexstanr-development-version"></a></h2>
-<ul><li>New <code><a href="../reference/backend_diagnostics.html">backend_diagnostics()</a></code> reports the numbers used to judge whether a fit can be trusted, in the same shape for both backends (<a href="https://github.com/ACCIDDA/flexstanr/issues/40" class="external-link">#40</a>): R-hat and bulk and tail ESS per parameter (computed by ‘posterior’), and divergent transitions, max treedepth hits, and E-BFMI per chain (using rstan’s and cmdstanr’s own definitions). It applies no thresholds and signals no warnings; deciding what counts as a failed fit is left to the host package. Needs ‘posterior’.</li>
-<li>Diagnostics handle cmdstanr fixed-parameter fits and non-default draws formats, and preserve rstan’s sampler dimensions for singleton draws. Posterior ESS warnings are suppressed to honor the reporting-only contract; undefined E-BFMI values are consistently <code>NA</code>, with the backend formula clarified in the documentation.</li>
-<li>Sampler diagnostics now delegate to cmdstanr’s public <code>diagnostic_summary()</code> (cmdstanr &gt;= 0.5.0) and rstan’s <code>get_bfmi()</code>, with narrow adapters for per-chain rstan counts and undefined energy. Backend availability is checked before reading a fit, and the posterior dependency is checked before <code>pars</code>.</li>
+<h2 class="pkg-version" data-toc-text="0.3.0" id="flexstanr-030">flexstanr 0.3.0<a class="anchor" aria-label="anchor" href="#flexstanr-030"></a></h2>
+<ul><li>New <code><a href="../reference/backend_diagnostics.html">backend_diagnostics()</a></code> reports the numbers used to judge whether a fit can be trusted, in the same shape for both backends (<a href="https://github.com/ACCIDDA/flexstanr/issues/40" class="external-link">#40</a>, <a href="https://github.com/ACCIDDA/flexstanr/issues/41" class="external-link">#41</a>): R-hat and bulk and tail ESS per parameter (computed by ‘posterior’), and divergent transitions, max treedepth hits, and E-BFMI per chain (all post-warmup), plus the number of chains, post-warmup iterations, and the <code>max_treedepth</code> setting. It applies no thresholds and signals no warnings (posterior’s ESS warnings are suppressed); deciding what counts as a failed fit is left to the host package. It needs the suggested ‘posterior’ package and errors with an install hint when it is missing.</li>
+<li>Sampler diagnostics delegate to cmdstanr’s public <code>diagnostic_summary()</code> and rstan’s <code>get_bfmi()</code>, with narrow adapters for per-chain rstan counts and undefined energy. Undefined E-BFMI values are consistently <code>NA</code>, and cmdstanr fixed-parameter fits report <code>NA</code> for the sampler columns and <code>max_treedepth</code>.</li>
+<li>The suggested cmdstanr backend now requires cmdstanr &gt;= 0.5.0 (for <code>diagnostic_summary()</code>).</li>
+<li>
+<code><a href="../reference/use_flexstanr.html">use_flexstanr()</a></code> adds <code>backend_diagnostics</code> to the host package’s generated <code>@importFrom flexstanr</code> list, alongside the other <code>backend_*()</code> accessors.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.0" id="flexstanr-020">flexstanr 0.2.0<a class="anchor" aria-label="anchor" href="#flexstanr-020"></a></h2><p class="text-muted">CRAN release: 2026-08-25</p>
