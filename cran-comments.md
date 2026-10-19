@@ -1,6 +1,6 @@
 ## Submission
 
-This is an update, 0.2.0 -> 0.3.0.
+This is an update, 0.1.0 -> 0.2.0.
 
 flexstanr is a portable Stan-backend layer: it gives a Stan-based R package one
 interface for fitting its models through either 'rstan' or 'cmdstanr', plus
@@ -8,35 +8,32 @@ backend-agnostic accessors for reading a fit.
 
 The main changes in this version:
 
-* New exported `backend_diagnostics()` reports convergence and sampler
-  diagnostics in the same shape for both backends: R-hat and bulk/tail ESS per
-  parameter (computed by 'posterior'), and divergent transitions, max treedepth
-  hits, and E-BFMI per chain. It only reports; it applies no thresholds and
-  signals no warnings.
-* 'posterior' remains in Suggests; `backend_diagnostics()` checks for it with
-  requireNamespace() and fails with an install hint when it is missing.
-* The optional cmdstanr backend is now declared as `cmdstanr (>= 0.5.0)` in
-  Suggests, for the `diagnostic_summary()` method the
-  sampler diagnostics delegate to.
-* `use_flexstanr()` adds `backend_diagnostics` to the host package's generated
-  import list. The change is additive; no existing function's signature or
-  return value changed.
+* Neither backend is required any more. 'rstan' moved from Imports to Suggests,
+  so flexstanr now installs and loads with neither 'rstan' nor 'cmdstanr'
+  present; selecting a backend whose package is missing fails with an
+  actionable error.
+* `backend_extract()` gained a `format` argument (`"list"`, `"draws"`,
+  `"matrix"`) and its `pars` argument now defaults to `NULL`, meaning every
+  parameter. The change is additive: `format` defaults to the shape the
+  function already returned, so existing calls are unaffected.
+* `stan_options(threading = TRUE)` adds scheduler-aware thread allocation,
+  splitting the cores the process is allowed to use between chains and
+  within-chain threads. Core detection goes through
+  `parallelly::availableCores()`, so it respects HPC scheduler allocations and
+  cgroup quotas rather than reading the machine's total core count.
+* `use_flexstanr()` now also generates the host package's re-export file, in
+  addition to editing its DESCRIPTION. New exported `test_threaded()` predicate,
+  so a host package can warn when its model cannot use the offered threads.
 
-## Reverse dependencies
-
-There is one reverse dependency on CRAN, imuGAP (Imports: flexstanr (>= 0.2.0)).
-
-We ran R CMD check (--no-manual) on the CRAN release imuGAP_0.2.0.tar.gz with
-the flexstanr 0.3.0 release candidate installed (macOS, R 4.5.3, with rstan, so
-imuGAP's Stan models compiled and its sampling tests ran): Status: OK, with all
-tests passing (one test skipped because CmdStan is not installed). The change in
-this version is additive, so no breakage is expected.
+There are no reverse dependencies on CRAN, so no reverse-dependency checks were
+required and no published package is affected by the `backend_extract()`
+signature change.
 
 ## R CMD check results
 
-0 errors | 0 warnings | 0 package notes
+0 errors | 0 warnings | 1 note
 
-The CRAN incoming-feasibility check reports (as INFO under R 4.5.3):
+The one note is the CRAN incoming-feasibility note:
 
 * Suggests or Enhances not in mainstream repositories: cmdstanr. cmdstanr is an
   optional backend, used only through requireNamespace() guards, so the package
@@ -54,18 +51,10 @@ test_threaded() and backend_has_draws() have fully runnable examples.
 
 ## Test environments
 
-* Local: macOS Tahoe 26.4 (aarch64-apple-darwin25.3.0), R 4.5.3,
-  R CMD check --as-cran (with the PDF manual) on the submission-equivalent
-  tarball (roxygen-first build, Remotes stripped): 0 errors, 0 warnings. The
-  only local NOTE was "checking for future file timestamps ... unable to verify
-  current time", which comes from the check's online time lookup, not the
-  package. cmdstanr 0.9.0 was installed locally; CmdStan itself was not.
-* GitHub Actions R CMD check --as-cran (--no-manual): ubuntu-latest (release,
-  oldrel, devel), macos-latest (release), windows-latest (release). Status: OK
-  on all five.
+* GitHub Actions R CMD check --as-cran: ubuntu-latest (release, oldrel, devel),
+  macOS-latest (release), windows-latest (release). All passing.
 * On-demand submission-equivalent check (Remotes stripped) via the cran-check
-  workflow, ubuntu-latest, R 4.6.1: 0 errors, 0 warnings, 0 notes (the
-  cmdstanr Additional_repositories line above is reported as INFO).
+  workflow: 0 errors, 0 warnings, the one note above.
 
 ## Before submitting (maintainer checklist)
 
