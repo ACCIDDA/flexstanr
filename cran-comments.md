@@ -60,6 +60,12 @@ test_threaded() and backend_has_draws() have fully runnable examples.
   only local NOTE was "checking for future file timestamps ... unable to verify
   current time", which comes from the check's online time lookup, not the
   package. cmdstanr 0.9.0 was installed locally; CmdStan itself was not.
+* GitHub Actions R CMD check --as-cran (--no-manual): ubuntu-latest (release,
+  oldrel, devel), macos-latest (release), windows-latest (release). Status: OK
+  on all five.
+* On-demand submission-equivalent check (Remotes stripped) via the cran-check
+  workflow, ubuntu-latest, R 4.6.1: 0 errors, 0 warnings, 0 notes (the
+  cmdstanr Additional_repositories line above is reported as INFO).
 
 ## Before submitting (maintainer checklist)
 
