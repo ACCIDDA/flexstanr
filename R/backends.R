@@ -171,7 +171,8 @@ assert_positive_int <- function(val, name) {
 #'   backend's sampler. Use the backend's own names: for `"rstan"`, the
 #'   [rstan::sampling()] arguments (`iter`, `cores`, `seed`); for
 #'   `"cmdstanr"`, the `$sample()` arguments (`iter_warmup`, `iter_sampling`,
-#'   `parallel_chains`, ...).
+#'   `parallel_chains`, ...). For the print method, additional arguments are
+#'   accepted but unused.
 #' @param backend which Stan interface to target, one of `"rstan"` (default) or
 #'   `"cmdstanr"`. Determines which argument vocabulary is accepted and which
 #'   sampler [fit_model()] calls. Both backends are optional; selecting one
@@ -197,8 +198,13 @@ assert_positive_int <- function(val, name) {
 #'   stan_options(backend = "cmdstanr", parallel_chains = 4, iter_warmup = 500)
 #' }
 #'
-#' @return a named list of validated sampler arguments, carrying a `backend`
-#'   element recording the backend it was built for
+#' @return A named list of class `c("flexstanr_options", "list")`, containing
+#'   validated sampler arguments and a `backend` element recording the backend
+#'   it was built for. Use `inherits(x, "flexstanr_options")` to recognize these
+#'   options in a host package. Ordinary list access and modification still work.
+#'   Printing shows the backend and the stored options; defaults left to the
+#'   native sampler are not filled in. The print method returns its input
+#'   invisibly.
 #' @seealso [test_threaded()]
 #' @export
 stan_options <- function(..., chains = 4L, backend = "rstan",
@@ -275,7 +281,23 @@ stan_options <- function(..., chains = 4L, backend = "rstan",
     }
     res <- apply_auto_threading(res, max_cores)
   }
-  res
+  structure(res, class = c("flexstanr_options", "list"))
+}
+
+#' Print Stan sampler options
+#'
+#' @param x A [stan_options()] result.
+#' @rdname stan_options
+#' @export
+print.flexstanr_options <- function(x, ...) {
+  cat("Stan sampler options (", x$backend, ")\n", sep = "")
+  for (i in which(names(x) != "backend")) {
+    name <- names(x)[i]
+    if (!nzchar(name)) name <- paste0("[[", i, "]]")
+    value <- paste(deparse(x[[i]], width.cutoff = 60L), collapse = "\n    ")
+    cat("  ", name, ": ", value, "\n", sep = "")
+  }
+  invisible(x)
 }
 
 #' Does a set of sampler options ask for within-chain threading?

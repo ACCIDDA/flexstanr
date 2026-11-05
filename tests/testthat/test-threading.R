@@ -62,11 +62,12 @@ test_that("write_threading records cmdstanr native fields", {
 # --- stan_options(threading = ...) integration -------------------------------
 
 test_that("stan_options(threading = TRUE) allocates, records, and messages", {
-  skip_if_not_installed("withr")
-  local_mocked_bindings(backend_installed = function(backend) TRUE)
-  # Constrain availableCores() to 2 (as under R CMD check) so the result is
-  # deterministic: pool = 2 (all) -> optimal_alloc(4, 2) = 2 chains, 1 thread.
-  withr::local_envvar(`_R_CHECK_LIMIT_CORES_` = "TRUE")
+  local_mocked_bindings(
+    backend_installed = function(backend) TRUE,
+    detect_cores = function() 2L
+  )
+  # Fix the detected pool at 2, even on single-core test hosts: the R CMD check
+  # limit caps availableCores() at 2 but cannot guarantee that 2 are available.
   expect_message(
     opts <- stan_options(chains = 4, threading = TRUE),
     "threading enabled"

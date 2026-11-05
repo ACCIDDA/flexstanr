@@ -1,5 +1,8 @@
 # flexstanr 0.3.0
 
+* `stan_options()` now returns a list of class `flexstanr_options`, so host
+  packages can recognize it with `inherits()`. Its print method shows the
+  backend and stored sampler options, including any threading allocation (#45).
 * New `backend_diagnostics()` reports the numbers used to judge whether a fit
   can be trusted, in the same shape for both backends (#40, #41): R-hat and
   bulk and tail ESS per parameter (computed by 'posterior'), and divergent
