@@ -12,6 +12,7 @@ Wire flexstanr into your own package.
 Build sampler options and fit a model through the chosen backend.
 
 - [`stan_options()`](https://accidda.github.io/flexstanr/reference/stan_options.md)
+  [`print(`*`<flexstanr_options>`*`)`](https://accidda.github.io/flexstanr/reference/stan_options.md)
   : Stan Sampler Options
 - [`fit_model()`](https://accidda.github.io/flexstanr/reference/fit_model.md)
   : Fit a Stan model through the chosen backend

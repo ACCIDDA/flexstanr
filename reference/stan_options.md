@@ -21,6 +21,9 @@ stan_options(
   threading = FALSE,
   max_cores = NULL
 )
+
+# S3 method for class 'flexstanr_options'
+print(x, ...)
 ```
 
 ## Arguments
@@ -32,6 +35,7 @@ stan_options(
   [`rstan::sampling()`](https://mc-stan.org/rstan/reference/stanmodel-method-sampling.html)
   arguments (`iter`, `cores`, `seed`); for `"cmdstanr"`, the `$sample()`
   arguments (`iter_warmup`, `iter_sampling`, `parallel_chains`, ...).
+  For the print method, additional arguments are accepted but unused.
 
 - chains:
 
@@ -63,10 +67,19 @@ stan_options(
   (the default) uses all available cores; set it to leave some free /
   cap usage for other work. Ignored when `threading = FALSE`.
 
+- x:
+
+  A `stan_options()` result.
+
 ## Value
 
-a named list of validated sampler arguments, carrying a `backend`
-element recording the backend it was built for
+A named list of class `c("flexstanr_options", "list")`, containing
+validated sampler arguments and a `backend` element recording the
+backend it was built for. Use `inherits(x, "flexstanr_options")` to
+recognize these options in a host package. Ordinary list access and
+modification still work. Printing shows the backend and the stored
+options; defaults left to the native sampler are not filled in. The
+print method returns its input invisibly.
 
 ## See also
 
@@ -81,31 +94,15 @@ if (requireNamespace("rstan", quietly = TRUE)) {
   stan_options(chains = 4, threading = TRUE)  # allocate spare cores to threads
 }
 #> flexstanr: threading enabled. Using 4 of 4 available cores: 4 chains in parallel, 1 thread per chain. Pass max_cores to leave some cores free.
-#> $chains
-#> [1] 4
-#> 
-#> $backend
-#> [1] "rstan"
-#> 
-#> $cores
-#> [1] 4
-#> 
-#> $threads_per_chain
-#> [1] 1
-#> 
+#> Stan sampler options (rstan)
+#>   chains: 4L
+#>   cores: 4L
+#>   threads_per_chain: 1L
 if (requireNamespace("cmdstanr", quietly = TRUE)) {
   stan_options(backend = "cmdstanr", parallel_chains = 4, iter_warmup = 500)
 }
-#> $parallel_chains
-#> [1] 4
-#> 
-#> $iter_warmup
-#> [1] 500
-#> 
-#> $chains
-#> [1] 4
-#> 
-#> $backend
-#> [1] "cmdstanr"
-#> 
+#> Stan sampler options (cmdstanr)
+#>   parallel_chains: 4L
+#>   iter_warmup: 500L
+#>   chains: 4L
 ```

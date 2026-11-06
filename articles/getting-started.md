@@ -35,13 +35,21 @@ sampler validates arguments that flexstanr does not recognize:
 ``` r
 
 opts <- stan_options(chains = 2, iter = 500, seed = 1)
-str(opts)
-#> List of 4
-#>  $ iter   : int 500
-#>  $ seed   : int 1
-#>  $ chains : int 2
-#>  $ backend: chr "rstan"
+opts
+#> Stan sampler options (rstan)
+#>   iter: 500L
+#>   seed: 1L
+#>   chains: 2L
+inherits(opts, "flexstanr_options")
+#> [1] TRUE
 ```
+
+The result is a `flexstanr_options` list. Printing it shows the backend
+and stored options, without filling in defaults left to the native
+sampler. Host packages can use
+[`inherits()`](https://rdrr.io/r/base/class.html) to recognize it;
+ordinary list access such as `opts$chains` and modification such as
+`opts$seed <- 2L` still work.
 
 For example, backend-native controls such as rstan’s `refresh` or
 cmdstanr’s `open_progress` pass through unchanged.

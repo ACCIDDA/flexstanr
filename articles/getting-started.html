@@ -104,12 +104,18 @@ that backend’s native sampler. The native sampler validates arguments
 that flexstanr does not recognize:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">opts</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/stan_options.html">stan_options</a></span><span class="op">(</span>chains <span class="op">=</span> <span class="fl">2</span>, iter <span class="op">=</span> <span class="fl">500</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">opts</span><span class="op">)</span></span>
-<span><span class="co">#&gt; List of 4</span></span>
-<span><span class="co">#&gt;  $ iter   : int 500</span></span>
-<span><span class="co">#&gt;  $ seed   : int 1</span></span>
-<span><span class="co">#&gt;  $ chains : int 2</span></span>
-<span><span class="co">#&gt;  $ backend: chr "rstan"</span></span></code></pre></div>
+<span><span class="va">opts</span></span>
+<span><span class="co">#&gt; Stan sampler options (rstan)</span></span>
+<span><span class="co">#&gt;   iter: 500L</span></span>
+<span><span class="co">#&gt;   seed: 1L</span></span>
+<span><span class="co">#&gt;   chains: 2L</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">inherits</a></span><span class="op">(</span><span class="va">opts</span>, <span class="st">"flexstanr_options"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
+<p>The result is a <code>flexstanr_options</code> list. Printing it
+shows the backend and stored options, without filling in defaults left
+to the native sampler. Host packages can use <code><a href="https://rdrr.io/r/base/class.html" class="external-link">inherits()</a></code> to
+recognize it; ordinary list access such as <code>opts$chains</code> and
+modification such as <code>opts$seed &lt;- 2L</code> still work.</p>
 <p>For example, backend-native controls such as rstan’s
 <code>refresh</code> or cmdstanr’s <code>open_progress</code> pass
 through unchanged.</p>

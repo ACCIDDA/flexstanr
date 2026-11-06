@@ -77,7 +77,10 @@ always size per-chain structures from it.</p>
 <span>  backend <span class="op">=</span> <span class="st">"rstan"</span>,</span>
 <span>  threading <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  max_cores <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'flexstanr_options'</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -89,7 +92,8 @@ always size per-chain structures from it.</p>
 backend's sampler. Use the backend's own names: for <code>"rstan"</code>, the
 <code><a href="https://mc-stan.org/rstan/reference/stanmodel-method-sampling.html" class="external-link">rstan::sampling()</a></code> arguments (<code>iter</code>, <code>cores</code>, <code>seed</code>); for
 <code>"cmdstanr"</code>, the <code>$sample()</code> arguments (<code>iter_warmup</code>, <code>iter_sampling</code>,
-<code>parallel_chains</code>, ...).</p></dd>
+<code>parallel_chains</code>, ...). For the print method, additional arguments are
+accepted but unused.</p></dd>
 
 
 <dt id="arg-chains">chains<a class="anchor" aria-label="anchor" href="#arg-chains"></a></dt>
@@ -119,11 +123,20 @@ model that cannot use the offered threads should say so; see
 <code>NULL</code> (the default) uses all available cores; set it to leave some free /
 cap usage for other work. Ignored when <code>threading = FALSE</code>.</p></dd>
 
+
+<dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
+<dd><p>A <code>stan_options()</code> result.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>a named list of validated sampler arguments, carrying a <code>backend</code>
-element recording the backend it was built for</p>
+    <p>A named list of class <code>c("flexstanr_options", "list")</code>, containing
+validated sampler arguments and a <code>backend</code> element recording the backend
+it was built for. Use <code>inherits(x, "flexstanr_options")</code> to recognize these
+options in a host package. Ordinary list access and modification still work.
+Printing shows the backend and the stored options; defaults left to the
+native sampler are not filled in. The print method returns its input
+invisibly.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -138,33 +151,17 @@ element recording the backend it was built for</p>
 <span class="r-in"><span>  <span class="fu">stan_options</span><span class="op">(</span>chains <span class="op">=</span> <span class="fl">4</span>, threading <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>  <span class="co"># allocate spare cores to threads</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> flexstanr: threading enabled. Using 4 of 4 available cores: 4 chains in parallel, 1 thread per chain. Pass max_cores to leave some cores free.</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $chains</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $backend</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "rstan"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $cores</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $threads_per_chain</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Stan sampler options (rstan)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   chains: 4L</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   cores: 4L</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   threads_per_chain: 1L</span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"cmdstanr"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="fu">stan_options</span><span class="op">(</span>backend <span class="op">=</span> <span class="st">"cmdstanr"</span>, parallel_chains <span class="op">=</span> <span class="fl">4</span>, iter_warmup <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $parallel_chains</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $iter_warmup</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 500</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $chains</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> $backend</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "cmdstanr"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Stan sampler options (cmdstanr)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   parallel_chains: 4L</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   iter_warmup: 500L</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   chains: 4L</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

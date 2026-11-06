@@ -2,6 +2,12 @@
 
 ## flexstanr 0.3.0
 
+- [`stan_options()`](https://accidda.github.io/flexstanr/reference/stan_options.md)
+  now returns a list of class `flexstanr_options`, so host packages can
+  recognize it with [`inherits()`](https://rdrr.io/r/base/class.html).
+  Its print method shows the backend and stored sampler options,
+  including any threading allocation
+  ([\#45](https://github.com/ACCIDDA/flexstanr/issues/45)).
 - New
   [`backend_diagnostics()`](https://accidda.github.io/flexstanr/reference/backend_diagnostics.md)
   reports the numbers used to judge whether a fit can be trusted, in the

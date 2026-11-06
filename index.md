@@ -17,7 +17,11 @@ run time.
   validates common sampler arguments and forwards arbitrary same-backend
   arguments **verbatim** to the native sampler for validation. Reserved
   fitting inputs are rejected, as is known vocabulary from the other
-  backend (with a “did you mean” hint).
+  backend (with a “did you mean” hint). It returns a `flexstanr_options`
+  list with a print method that shows the backend and stored options.
+  Host packages can recognize it with
+  `inherits(opts, "flexstanr_options")` and continue to access or modify
+  its elements as an ordinary list.
 - [`fit_model()`](https://accidda.github.io/flexstanr/reference/fit_model.md)
   dispatches the fit to the backend recorded on the options, resolving
   the compiled model by name from the calling package.
